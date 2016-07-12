@@ -1,0 +1,14 @@
+{
+    ["Default"] = {
+        ["name"] = "Default",
+        ["direction"] = "Horizontal",
+        ["width"] = 3,
+        ["height"] = 3,
+        ["length"] = 21,
+        ["place_torch"] = true,
+        ["torch_distance"] = 4,
+        ["ender_chest_dump"] = false,
+        ["ender_chest_fuel"] = false,
+        ["ender_chest_torch"] = false
+    }
+}

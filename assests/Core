@@ -1,0 +1,1103 @@
+--[[
+Unearth Documentation:
+
+Thank you for using the Unearth turtle mining
+program. All APIs & Interfaces are
+documented in their corresponding files. 
+
+Use the program's exclusive UI to quickly unearth
+the ground, and get the resources that you need
+quickly.
+
+Updates will be available on the GitHub, and is
+checked by terminals that have automatic updates
+enabled. 
+--]]
+
+-- # Program API Directory Files:
+local APIS = {
+    ["BUTTON"]      = "unearth/apis/Button",
+    ["CRAFT"]       = "unearth/apis/Craft",
+    ["DEBUGGER"]    = "unearth/apis/Debugger",
+    ["ENVIRONMENT"] = "unearth/apis/Environment",
+    ["SCREEN"]      = "unearth/apis/Screen",
+    ["TEXT"]        = "unearth/apis/Text",
+    ["WINDOW"]      = "unearth/apis/Window" 
+}
+
+-- # Functions for Loading & Unloading APIs into/from Environment:
+local function LOAD_APIS(doPrint)
+    for ID, path in pairs(APIS) do
+        if not os.loadAPI(path) then
+            error("\n[API: "..path.."]\nStatus: <Error>\n---", 2)
+        end
+        if doPrint then
+            print("[API: "..path.."]\nStatus: <Loaded>\n---")
+            sleep(0.05)
+        end
+    end
+end
+
+local function UNLOAD_APIS(doPrint)
+    for ID, path in pairs(APIS) do
+        os.unloadAPI(path)
+        if doPrint then
+            print("[API: "..path.."]\nStatus: <Unloaded>\n---")
+            sleep(0.05)
+        end
+    end
+end
+
+if not C9 then
+    LOAD_APIS(true)
+end
+
+-- # Local Program Variables:
+local w, h = term.getSize()
+
+local environment = Environment.new()
+local term = Screen.new()
+
+local terminate = false
+local editting = false
+local open_menu = false
+
+-- # Screen Modules:
+local main_screen = term:add(1, 2, w, h - 2, colors.black, colors.gray, 1)
+local edit_screen = term:add(1, 2, w, h - 2, colors.black, colors.white, 3, true)
+local console_screen = term:add(1, 2, w - 1, h - 2, colors.lime, colors.black, 1, true)
+local bottom_bar = term:add(1, h, w, 1, colors.black, colors.lightGray, 2)
+local top_bar = term:add(1, 1, w, 1, colors.white, colors.blue, 2)
+
+-- # Local Screen Tracers:
+local current_screen = main_screen
+local previous_screen = current_screen
+
+-- # Main Button Modules:
+local button_close = Button.new({
+    ["text"] = string.char(215),
+    ["xPos"] = w - 2,
+    ["yPos"] = 1,
+    ["xPad"] = 1,
+    ["foreground"] = colors.white,
+    ["background"] = colors.red,
+    ["bFlash"] = colors.gray,
+    ["screen"] = top_bar
+})
+
+local button_file = Button.new({
+    ["text"] = "[File]",
+    ["xPos"] = 1,
+    ["yPos"] = 1,
+    ["foreground"] = colors.white,
+    ["background"] = colors.blue,
+    ["screen"] = top_bar
+})
+
+local button_turtle = Button.new({
+    ["text"] = "[Turtle]",
+    ["xPos"] = 8,
+    ["yPos"] = 1,
+    ["foreground"] = colors.white,
+    ["background"] = colors.blue,
+    ["screen"] = top_bar
+})
+
+local button_console = Button.new({
+    ["text"] = "[Console]",
+    ["xPos"] = 1,
+    ["yPos"] = 1,
+    ["foreground"] = colors.black,
+    ["background"] = colors.lightGray,
+    ["screen"] = bottom_bar
+})
+
+-- # Local Program Functions:
+local function wrap(var)
+    if var == nil then
+        return "False"
+    elseif var == true then
+        return "True"
+    elseif var == false then
+        return "False"
+    elseif type(var) == "number" then
+        return "Number"
+    elseif type(var) == "string" then
+        return "String" 
+    end
+end
+
+local function color(var)
+    if var == true then
+        return colors.green
+    elseif var == false then
+        return colors.red
+    else
+        return colors.purple
+    end
+end
+
+local function log(msg, msg_type)
+    local line = ""
+    for i = 1, console_screen.width do
+        line = line.."-"
+    end
+
+    if not msg_type then msg_type = "INFO" end
+
+    if msg_type == "INFO" then
+        local message = {
+            [1] = "[",
+            [2] = "INFO",
+            [3] = "] (",
+            [4] = "Day: ",
+            [5] = os.day(),
+            [6] = ") [",
+            [7] = textutils.formatTime(os.time(), false),
+            [8] = "] ",
+            [9] = msg.."\n",
+            [10] = line
+        }
+    
+        local message_foreground = {
+            [1] = colors.white,
+            [2] = colors.green,
+            [3] = colors.white,
+            [4] = colors.lime,
+            [5] = colors.red,
+            [6] = colors.white,
+            [7] = colors.red,
+            [8] = colors.white,
+            [9] = colors.lime,
+            [10] = colors.gray
+        }
+    
+        Text.display({
+            ["text"] = message,
+            ["startX"] = 1,
+            ["startY"] = console_screen.curY,
+            ["foreground"] = message_foreground,
+            ["background"] = colors.black,
+            ["buffer"] = true,
+            ["wrapper"] = "new line",
+            ["screen"] = console_screen
+        })
+    end
+
+    -- # Update Screen:
+    console_screen.curY = console_screen.curY + 1
+end
+
+-- # Load Appdata & Profiles from Assests:
+local file_appdata = fs.open("unearth/assests/appdata", "r")
+local file_profiles = fs.open("unearth/assests/profiles", "r")
+
+-- # Local Variables from Assests:
+local appdata = textutils.unserialize(file_appdata.readAll())
+local profiles = textutils.unserialize(file_profiles.readAll())
+local loaded_profile = profiles[appdata.last_profile]
+
+-- # Startup Definitions:
+-- # Parent Clearing:
+term:setBackgroundColor(colors.black)
+term:setTextColor(colors.white)
+term:clear()
+
+-- # Main Screen Clearing:
+term.clear(main_screen)
+
+-- # Top Bar Clearing:
+term.clear(top_bar)
+
+-- # Bottom Bar Clearing:
+term.clear(bottom_bar)
+
+-- # Main Button Displays:
+button_close:display()
+button_file:display()
+button_turtle:display()
+button_console:display()
+
+-- # Push Message to Console of Success:
+log("Successfully loaded all APIs", "INFO")
+
+-- # Log Successful Assests Boot:
+log("Successfully loaded assests", "INFO")
+
+-- # Log Profile Loaded:
+log("Loaded: ['"..loaded_profile.name.."'], for profile")
+
+-- # Push Successful Protocol to Console:
+log("Successfully pulled turtle information")
+
+-- # Push Profile Update to Event Queue:
+os.queueEvent("UNEARTH_PROFILE_UPDATE")
+
+-- # Main Program Modules:
+--[[
+    >>>
+        MAIN
+        SCREEN
+    <<<
+]]
+
+function MODULE_MAIN_SCREEN()
+    -- # Event Handler:
+    while true do
+        local event = os.pullEvent()
+        if event == "UNEARTH_PROFILE_UPDATE" or event == "UPDATE_PROFILE_VARIABLES" or event == "turtle_update" then
+            term.clear(main_screen)
+
+            -- # Display Current Profile:
+            Text.display({
+                ["text"] = {
+                    [1] = "Current Profile",
+                    [2] = ": ",
+                    [3] = "<",
+                    [4] = loaded_profile.name,
+                    [5] = ">"
+                },
+                ["startX"] = 1,
+                ["startY"] = 1,
+                ["foreground"] = {
+                    [1] = colors.black,
+                    [2] = colors.black,
+                    [3] = colors.red,
+                    [4] = colors.lime,
+                    [5] = colors.red
+                },
+                ["background"] = colors.gray,
+                ["wrapper"] = "concat",
+                ["screen"] = main_screen
+            })
+
+            -- # Draw Static Information:
+            local line = ""
+            for i = 1, main_screen.width do
+                line = line..string.char(183)
+            end
+
+            term.setTextColor(main_screen, colors.white)
+            for i = 3, main_screen.height do
+                term.setCursorPos(main_screen, 26, i)
+                term.write(main_screen, string.char(183))
+            end
+
+            Text.display({
+                ["text"] = line,
+                ["startX"] = 1,
+                ["startY"] = 2,
+                ["foreground"] = colors.white,
+                ["background"] = colors.gray,
+                ["screen"] = main_screen
+            })
+
+            -- # Display Profile Variables:
+            Text.display({
+                ["text"] = {
+                    [1] = "Direction: ",
+                    [2] = loaded_profile.direction.."\n",
+                    [3] = "Width: ",
+                    [4] = loaded_profile.width.."\n",
+                    [5] = "Height: ",
+                    [6] = loaded_profile.height.."\n",
+                    [7] = "Length: ",
+                    [8] = loaded_profile.length.."\n",
+                    [9] = "Place Torch: ",
+                    [10] = wrap(loaded_profile.place_torch).."\n",
+                    [11] = "Torch Distance: ",
+                    [12] = loaded_profile.torch_distance.."\n",
+                    [13] = "Ender Chest Dump: ",
+                    [14] = wrap(loaded_profile.ender_chest_dump).."\n",
+                    [15] = "Ender Chest Fuel: ",
+                    [16] = wrap(loaded_profile.ender_chest_fuel).."\n",
+                    [17] = "Ender Chest Torch: ",
+                    [18] = wrap(loaded_profile.ender_chest_torch).."\n"
+                },
+                ["startX"] = 1,
+                ["startY"] = 3,
+                ["foreground"] = {
+                    [1] = colors.black,
+                    [2] = colors.blue,
+                    [3] = colors.black,
+                    [4] = colors.orange,
+                    [5] = colors.black,
+                    [6] = colors.orange,
+                    [7] = colors.black,
+                    [8] = colors.orange,
+                    [9] = colors.black,
+                    [10] = color(loaded_profile.place_torch),
+                    [11] = colors.black,
+                    [12] = colors.orange,
+                    [13] = colors.black,
+                    [14] = color(loaded_profile.ender_chest_dump),
+                    [15] = colors.black,
+                    [16] = color(loaded_profile.ender_chest_fuel),
+                    [17] = colors.black,
+                    [18] = color(loaded_profile.ender_chest_torch),
+                },
+                ["background"] = colors.gray,
+                ["wrapper"] = "new line",
+                ["screen"] = main_screen
+            })
+
+            -- # Display Current Fuel Levels:
+            Text.display({
+                ["text"] = {
+                    [1] = "Fuel Limit:\n",
+                    [2] = turtle.getFuelLimit().."\n\n",
+                    [3] = "Fuel Level:\n",
+                    [4] = turtle.getFuelLevel().."\n\n",
+                    [5] = "Unearthing:\n",
+                    [6] = "[WIP]"
+                },
+                ["startX"] = 28,
+                ["startY"] = 3,
+                ["foreground"] = {
+                    [1] = colors.black,
+                    [2] = colors.green,
+                    [3] = colors.black,
+                    [4] = colors.green,
+                    [5] = colors.black,
+                    [6] = colors.red
+                },
+                ["background"] = colors.gray,
+                ["wrapper"] = "new line",
+                ["screen"] = main_screen
+            })
+        end
+    end
+end
+
+--[[
+    >>>
+        EDIT PROFILE
+        MODULE
+    <<<
+]]
+
+function MODULE_EDIT_PROFILE()
+    -- # Local Module Buttons:
+    local button_done_editting = Button.new({
+        ["text"] = "Done",
+        ["xPos"] = 33,
+        ["yPos"] = 6,
+        ["xPad"] = 1,
+        ["yPad"] = 1,
+        ["foreground"] = colors.white,
+        ["background"] = colors.green,
+        ["bFlash"] = colors.gray,
+        ["screen"] = edit_screen
+    })
+
+    local button_direction = Button.new({
+        ["text"] = "[Direction]",
+        ["xPos"] = 1,
+        ["yPos"] = 3,
+        ["foreground"] = colors.black,
+        ["background"] = colors.white,
+        ["bFlash"] = colors.lightGray,
+        ["screen"] = edit_screen
+    })
+
+    local button_width = Button.new({
+        ["text"] = "[Width]",
+        ["xPos"] = 1,
+        ["yPos"] = 4,
+        ["foreground"] = colors.black,
+        ["background"] = colors.white,
+        ["bFlash"] = colors.lightGray,
+        ["screen"] = edit_screen
+    })
+
+    local button_height = Button.new({
+        ["text"] = "[Height]",
+        ["xPos"] = 1,
+        ["yPos"] = 5,
+        ["foreground"] = colors.black,
+        ["background"] = colors.white,
+        ["bFlash"] = colors.lightGray,
+        ["screen"] = edit_screen
+    })
+
+    local button_length = Button.new({
+        ["text"] = "[Length]",
+        ["xPos"] = 1,
+        ["yPos"] = 6,
+        ["foreground"] = colors.black,
+        ["background"] = colors.white,
+        ["bFlash"] = colors.lightGray,
+        ["screen"] = edit_screen
+    })
+
+    local button_place_torch = Button.new({
+        ["text"] = "[Place Torch]",
+        ["xPos"] = 1,
+        ["yPos"] = 7,
+        ["foreground"] = colors.black,
+        ["background"] = colors.white,
+        ["bFlash"] = colors.lightGray,
+        ["screen"] = edit_screen
+    })
+
+    local button_torch_distance = Button.new({
+        ["text"] = "[Torch Distance]",
+        ["xPos"] = 1,
+        ["yPos"] = 8,
+        ["foreground"] = colors.black,
+        ["background"] = colors.white,
+        ["bFlash"] = colors.lightGray,
+        ["screen"] = edit_screen
+    })
+
+    local button_ender_chest_dump = Button.new({
+        ["text"] = "[Ender: Dump]",
+        ["xPos"] = 1,
+        ["yPos"] = 9,
+        ["foreground"] = colors.black,
+        ["background"] = colors.white,
+        ["bFlash"] = colors.lightGray,
+        ["screen"] = edit_screen
+    })
+
+    local button_ender_chest_fuel = Button.new({
+        ["text"] = "[Ender: Fuel]",
+        ["xPos"] = 1,
+        ["yPos"] = 10,
+        ["foreground"] = colors.black,
+        ["background"] = colors.white,
+        ["bFlash"] = colors.lightGray,
+        ["screen"] = edit_screen
+    })
+
+    local button_ender_chest_torch = Button.new({
+        ["text"] = "[Ender: Torch]",
+        ["xPos"] = 1,
+        ["yPos"] = 11,
+        ["foreground"] = colors.black,
+        ["background"] = colors.white,
+        ["bFlash"] = colors.lightGray,
+        ["screen"] = edit_screen
+    })
+
+    -- # Event Handler:
+    while true do
+        local event, p1, p2, p3 = os.pullEvent()
+        if open_menu then
+            -- >> Skip...
+        elseif event == "START_EDITTING" and editting then
+            -- # Display Current Profile:
+            Text.display({
+                ["text"] = {
+                    [1] = "Current Profile",
+                    [2] = ": ",
+                    [3] = "<",
+                    [4] = loaded_profile.name,
+                    [5] = ">"
+                },
+                ["startX"] = 1,
+                ["startY"] = 1,
+                ["foreground"] = {
+                    [1] = colors.black,
+                    [2] = colors.black,
+                    [3] = colors.red,
+                    [4] = colors.lime,
+                    [5] = colors.red
+                },
+                ["background"] = colors.white,
+                ["wrapper"] = "concat",
+                ["screen"] = edit_screen
+            })
+
+            -- # Draw Static Information:
+            local line = ""
+            for i = 1, edit_screen.width do
+                line = line..string.char(183)
+            end
+
+            term.setTextColor(edit_screen, colors.black)
+            for i = 3, edit_screen.height do
+                term.setCursorPos(edit_screen, 31, i)
+                term.write(edit_screen, string.char(183))
+            end
+
+            Text.display({
+                ["text"] = line,
+                ["startX"] = 1,
+                ["startY"] = 2,
+                ["foreground"] = colors.black,
+                ["background"] = colors.white,
+                ["screen"] = edit_screen
+            })
+
+            -- # Display Buttons:
+            button_done_editting:display()
+            button_direction:display()
+            button_width:display()
+            button_height:display()
+            button_length:display()
+            button_place_torch:display()
+            button_torch_distance:display()
+            button_ender_chest_dump:display()
+            button_ender_chest_fuel:display()
+            button_ender_chest_torch:display()
+        elseif button_direction:call(event, p2, p3) and editting then
+            -- # Change Variable:
+            if loaded_profile.direction == "Horizontal" then
+                loaded_profile.direction = "Vertical"
+            else
+                loaded_profile.direction = "Horizontal"
+            end
+
+            -- # Queue Update Event:
+            os.queueEvent("UPDATE_PROFILE_VARIABLES")
+        elseif button_width:call(event, p2, p3) and editting then
+            -- $ Bring Up Calculator Window Here...
+            -- $ Last Dev Here: Begin a Window test here...
+        elseif button_height:call(event, p2, p3) and editting then
+            -- $ Bring Up Calculator Window Here...
+        elseif button_length:call(event, p2, p3) and editting then
+            -- $ Bring Up Calculator Window Here...
+        elseif button_place_torch:call(event, p2, p3) and editting then
+            -- # Change Variable:
+            if loaded_profile.place_torch == true then
+                loaded_profile.place_torch = false
+            else
+                loaded_profile.place_torch = true
+            end
+
+            -- # Queue Update Event:
+            os.queueEvent("UPDATE_PROFILE_VARIABLES")
+        elseif button_torch_distance:call(event, p2, p3) and editting then
+            -- $ Bring Up Calculator Window Here...
+        elseif button_ender_chest_dump:call(event, p2, p3) and editting then
+            -- # Change Variable:
+            if loaded_profile.ender_chest_dump == true then
+                loaded_profile.ender_chest_dump = false
+            else
+                loaded_profile.ender_chest_dump = true
+            end
+
+            -- # Queue Update Event:
+            os.queueEvent("UPDATE_PROFILE_VARIABLES")
+        elseif button_ender_chest_fuel:call(event, p2, p3) and editting then
+            -- # Change Variable:
+            if loaded_profile.ender_chest_fuel == true then
+                loaded_profile.ender_chest_fuel = false
+            else
+                loaded_profile.ender_chest_fuel = true
+            end
+
+            -- # Queue Update Event:
+            os.queueEvent("UPDATE_PROFILE_VARIABLES")
+        elseif button_ender_chest_torch:call(event, p2, p3) and editting then
+            -- # Change Variable:
+            if loaded_profile.ender_chest_torch == true then
+                loaded_profile.ender_chest_torch = false
+            else
+                loaded_profile.ender_chest_torch = true
+            end
+
+            -- # Queue Update Event:
+            os.queueEvent("UPDATE_PROFILE_VARIABLES")
+        elseif event == "UPDATE_PROFILE_VARIABLES" and editting then
+            -- # Display Profile Variables:
+            term.clearLine(edit_screen, false, false, 3)
+            Text.display({
+                ["text"] = loaded_profile.direction,
+                ["foreground"] = colors.blue,
+                ["background"] = colors.white,
+                ["startX"] = 30 - string.len(loaded_profile.direction),
+                ["startY"] = 3,
+                ["wrapper"] = "concat",
+                ["screen"] = edit_screen
+            })
+            term.clearLine(edit_screen, false, false, 4)
+            Text.display({
+                ["text"] = tostring(loaded_profile.width),
+                ["foreground"] = colors.orange,
+                ["background"] = colors.white,
+                ["startX"] = 30 - string.len(loaded_profile.width),
+                ["startY"] = 4,
+                ["wrapper"] = "concat",
+                ["screen"] = edit_screen
+            })
+            term.clearLine(edit_screen, false, false, 5)
+            Text.display({
+                ["text"] = tostring(loaded_profile.height),
+                ["foreground"] = colors.orange,
+                ["background"] = colors.white,
+                ["startX"] = 30 - string.len(loaded_profile.height),
+                ["startY"] = 5,
+                ["wrapper"] = "concat",
+                ["screen"] = edit_screen
+            })
+            term.clearLine(edit_screen, false, false, 6)
+            Text.display({
+                ["text"] = tostring(loaded_profile.length),
+                ["foreground"] = colors.orange,
+                ["background"] = colors.white,
+                ["startX"] = 30 - string.len(loaded_profile.length),
+                ["startY"] = 6,
+                ["wrapper"] = "concat",
+                ["screen"] = edit_screen
+            })
+            term.clearLine(edit_screen, false, false, 7)
+            Text.display({
+                ["text"] = wrap(loaded_profile.place_torch),
+                ["foreground"] = color(loaded_profile.place_torch),
+                ["background"] = colors.white,
+                ["startX"] = 30 - string.len(wrap(loaded_profile.place_torch)),
+                ["startY"] = 7,
+                ["wrapper"] = "concat",
+                ["screen"] = edit_screen
+            })
+            term.clearLine(edit_screen, false, false, 8)
+            Text.display({
+                ["text"] = tostring(loaded_profile.torch_distance),
+                ["foreground"] = colors.orange,
+                ["background"] = colors.white,
+                ["startX"] = 30 - string.len(loaded_profile.torch_distance),
+                ["startY"] = 8,
+                ["wrapper"] = "concat",
+                ["screen"] = edit_screen
+            })
+            term.clearLine(edit_screen, false, false, 9)
+            Text.display({
+                ["text"] = wrap(loaded_profile.ender_chest_dump),
+                ["foreground"] = color(loaded_profile.ender_chest_dump),
+                ["background"] = colors.white,
+                ["startX"] = 30 - string.len(wrap(loaded_profile.ender_chest_dump)),
+                ["startY"] = 9,
+                ["wrapper"] = "concat",
+                ["screen"] = edit_screen
+            })
+            term.clearLine(edit_screen, false, false, 10)
+            Text.display({
+                ["text"] = wrap(loaded_profile.ender_chest_fuel),
+                ["foreground"] = color(loaded_profile.ender_chest_fuel),
+                ["background"] = colors.white,
+                ["startX"] = 30 - string.len(wrap(loaded_profile.ender_chest_fuel)),
+                ["startY"] = 10,
+                ["wrapper"] = "concat",
+                ["screen"] = edit_screen
+            })
+            term.clearLine(edit_screen, false, false, 11)
+            Text.display({
+                ["text"] = wrap(loaded_profile.ender_chest_torch),
+                ["foreground"] = color(loaded_profile.ender_chest_torch),
+                ["background"] = colors.white,
+                ["startX"] = 30 - string.len(wrap(loaded_profile.ender_chest_torch)),
+                ["startY"] = 11,
+                ["wrapper"] = "concat",
+                ["screen"] = edit_screen
+            })
+            term.setTextColor(edit_screen, colors.black)
+            for i = 3, edit_screen.height do
+                term.setCursorPos(edit_screen, 31, i)
+                term.write(edit_screen, string.char(183))
+            end
+        elseif button_done_editting:call(event, p2, p3) and editting then
+            -- # Update Screens:
+            term.visible(edit_screen, false)
+            term.visible(main_screen, true)
+            term:refresh(true)
+
+            -- # Update Screen Tracers:
+            current_screen = main_screen
+            previous_screen = edit_screen
+
+            -- # Update Handlers:
+            editting = false
+        end
+    end    
+end
+
+--[[
+    >>>
+        FILE
+        SELECTION
+    <<<
+]]
+
+function MODULE_FILE_SELECTION()
+    -- # Local Module Variables:
+    local isVisible = false
+    local menu_file = term:add(1, 2, 15, 5, colors.black, colors.lightGray, 3, true)
+
+    -- # Local Module Buttons:
+    local button_load_profile = Button.new({
+        ["text"] = "> Load Profile ",
+        ["xPos"] = 1,
+        ["yPos"] = 1,
+        ["foreground"] = colors.black,
+        ["background"] = colors.lightGray,
+        ["bFlash"] = colors.gray,
+        ["screen"] = menu_file
+    })
+
+    local button_save_profile = Button.new({
+        ["text"] = "> Save Profile ",
+        ["xPos"] = 1,
+        ["yPos"] = 2,
+        ["foreground"] = colors.black,
+        ["background"] = colors.lightGray,
+        ["bFlash"] = colors.gray,
+        ["screen"] = menu_file
+    })
+
+    local button_edit_profile = Button.new({
+        ["text"] = "> Edit Profile ",
+        ["xPos"] = 1,
+        ["yPos"] = 3,
+        ["foreground"] = colors.black,
+        ["background"] = colors.lightGray,
+        ["bFlash"] = colors.gray,
+        ["screen"] = menu_file
+    })
+
+    local button_reboot = Button.new({
+        ["text"] = "> Close Program",
+        ["xPos"] = 1,
+        ["yPos"] = 5,
+        ["foreground"] = colors.black,
+        ["background"] = colors.lightGray,
+        ["bFlash"] = colors.gray,
+        ["screen"] = menu_file
+    })
+
+    -- # Event Handler:
+    while true do
+        local event, p1, p2, p3 = os.pullEvent()
+        if button_file:call(event, p2, p3) and not isVisible then
+            -- $ Update Event Variables:
+            isVisible = true
+            open_menu = true
+            
+            -- $ Make Menu Screen Visible:
+            term.visible(menu_file, true)
+            term:refresh(true)
+
+            -- $ Make Menu Buttons Visible:
+            button_load_profile:display()
+            button_save_profile:display()
+            button_edit_profile:display()
+            button_reboot:display()
+
+            -- $ Display Seperator Bar:
+            for i = 1, menu_file.width do
+                term.setCursorPos(menu_file, i, 4)
+                term.write(menu_file, "-")
+            end
+        elseif button_load_profile:call(event, p2, p3) and isVisible then
+            -- $ Load Profile Module Here...
+        elseif button_save_profile:call(event, p2, p3) and isVisible then
+            -- $ Save Profile Module Here...
+        elseif button_edit_profile:call(event, p2, p3) and isVisible then
+            -- # Update Screens:
+            term.visible(current_screen, false)
+            term.visible(menu_file, false)
+            term.visible(edit_screen, true)
+            term:refresh(true)
+
+            -- # Update Screen Tracers:
+            previous_screen = current_screen
+            current_screen = edit_screen
+
+            -- # Update Handlers:
+            isVisible = false
+            open_menu = false
+            editting = true
+
+            -- # Push Events to Module:
+            os.queueEvent("START_EDITTING")
+            os.queueEvent("UPDATE_PROFILE_VARIABLES")
+        elseif button_reboot:call(event, p2, p3) and isVisible then
+            terminate = true
+        elseif event == "mouse_click" and isVisible then 
+            if p2 < menu_file.startX or p3 < menu_file.startY or p2 > menu_file.endX or p3 > menu_file.endY then
+                isVisible = false
+                term.visible(menu_file, false)
+                term:refresh(true)
+            end
+        end
+    end
+end
+
+--[[
+    >>>
+        TURTLE
+        SELECTION
+    <<<
+]]
+
+function MODULE_TURTLE_SELECTION()
+    -- # Local Module Variables:
+    local isVisible = false
+    local menu_turtle = term:add(8, 2, 15, 5, colors.black, colors.lightGray, 3, true)
+
+    -- # Local Module Buttons:
+    local button_start = Button.new({
+        ["text"] = "> Start Digging",
+        ["xPos"] = 1,
+        ["yPos"] = 1,
+        ["foreground"] = colors.black,
+        ["background"] = colors.lightGray,
+        ["bFlash"] = colors.gray,
+        ["screen"] = menu_turtle
+    })
+
+    local button_pause = Button.new({
+        ["text"] = "> Pause Digging",
+        ["xPos"] = 1,
+        ["yPos"] = 2,
+        ["foreground"] = colors.black,
+        ["background"] = colors.lightGray,
+        ["bFlash"] = colors.gray,
+        ["screen"] = menu_turtle
+    })
+
+    local button_stop = Button.new({
+        ["text"] = "> Stop Digging ",
+        ["xPos"] = 1,
+        ["yPos"] = 3,
+        ["foreground"] = colors.black,
+        ["background"] = colors.lightGray,
+        ["bFlash"] = colors.gray,
+        ["screen"] = menu_turtle
+    })
+
+    local button_control = Button.new({
+        ["text"] = "> Take Control ",
+        ["xPos"] = 1,
+        ["yPos"] = 5,
+        ["foreground"] = colors.black,
+        ["background"] = colors.lightGray,
+        ["bFlash"] = colors.gray,
+        ["screen"] = menu_turtle
+    })
+
+    -- # Event Handler:
+    while true do
+        local event, p1, p2, p3 = os.pullEvent()
+        if button_turtle:call(event, p2, p3) and not isVisible then
+            -- $ Update Event Variables:
+            isVisible = true
+            open_menu = true
+            
+            -- $ Make Menu Screen Visible:
+            term.visible(menu_turtle, true)
+            term:refresh(true)
+
+            -- $ Make Menu Buttons Visible:
+            button_start:display()
+            button_pause:display()
+            button_stop:display()
+            button_control:display()
+
+            -- $ Display Seperator Bar:
+            for i = 1, menu_turtle.width do
+                term.setCursorPos(menu_turtle, i, 4)
+                term.write(menu_turtle, "-")
+            end
+        elseif button_start:call(event, p2, p3) and isVisible then
+            -- $ Start Digging if not Already Started...
+        elseif button_pause:call(event, p2, p3) and isVisible then
+            -- $ Pause Digging...
+        elseif button_stop:call(event, p2, p3) and isVisible then
+            -- $ Stop Digging...
+        elseif button_control:call(event, p2, p3) and isVisible then
+            -- $ Boot Remote Control Turtle Program...
+        elseif event == "mouse_click" and isVisible then 
+            if p2 < menu_turtle.startX or p3 < menu_turtle.startY or p2 > menu_turtle.endX or p3 > menu_turtle.endY then
+                isVisible = false
+                open_menu = false
+                term.visible(menu_turtle, false)
+                term:refresh(true)
+            end
+        end
+    end
+end
+
+--[[
+    >>>
+        CONSOLE
+        DISPLAY
+    <<<
+]]
+
+function MODULE_CONSOLE()
+    -- # Local Module Variables:
+    local isVisible = false
+    local scrollbar = term:add(w, 2, 1, h - 2, colors.white, colors.black, 2, true)
+
+    -- # Local Scrollbar Arrow Buttons:
+    local up_arrow = Button.new({
+        ["text"] = string.char(24),
+        ["xPos"] = 1,
+        ["yPos"] = 1,
+        ["foreground"] = colors.lightGray,
+        ["background"] = colors.black,
+        ["tFlash"] = colors.gray,
+        ["screen"] = scrollbar
+    })
+    
+    local down_arrow = Button.new({
+        ["text"] = string.char(25),
+        ["xPos"] = 1,
+        ["yPos"] = h - 2,
+        ["foreground"] = colors.lightGray,
+        ["background"] = colors.black,
+        ["tFlash"] = colors.gray,
+        ["screen"] = scrollbar
+    })
+
+    local scroller = Button.new({
+        ["text"] = "+",
+        ["xPos"] = 1,
+        ["yPos"] = 2,
+        ["foreground"] = colors.lightGray,
+        ["background"] = colors.black,
+        ["tFlash"] = colors.gray,
+        ["screen"] = scrollbar,
+    })
+
+    -- # Draw Vertical Scrolling Bar:
+    for i = 2, h - 3 do
+        term.setCursorPos(scrollbar, 1, i)
+        term.write(scrollbar, "|")
+    end
+
+    -- # Event Handler:
+    while true do
+        local event, p1, p2, p3 = os.pullEvent()
+
+        -- # Slider Checks:
+        local move, _, y = scroller:move(event, p2, p3, "x", function()
+            if p3 >= 3 and p3 <= h - 2 then
+                return true
+            else
+                return false
+            end
+        end)
+        if move then
+            if y < console_screen.curY then
+                term.scroll(console_screen, -y)
+            end  
+        end
+
+        if button_console:call(event, p2, p3) then
+            if not isVisible then
+                -- $ Update Visibility of Console:
+                isVisible = true
+    
+                -- $ Make Screen Adjustments:
+                term.visible(current_screen, false)
+                term.visible(console_screen, true)
+                term.visible(scrollbar, true)
+                term:refresh(true)
+
+                -- $ Update Screen Tracers:
+                previous_screen = current_screen
+                current_screen = console_screen
+
+                -- $ Make Scollbar Buttons Visible:
+                up_arrow:display()
+                down_arrow:display()
+                scroller:display()
+            else
+                -- $ Update Visibility of Console:
+                isVisible = false
+
+                -- $ Make Screen Adjustments:
+                term.visible(previous_screen, true)
+                term.visible(console_screen, false)
+                term.visible(scrollbar, false)
+                term:refresh(true)
+
+                -- $ Update Screen Tracers:
+                current_screen = previous_screen
+                previous_screen = console_screen
+            end
+        elseif down_arrow:call(event, p2, p3) and isVisible then
+            term.scroll(console_screen, 1)
+        elseif up_arrow:call(event, p2, p3) and isVisible then
+            term.scroll(console_screen, -1)
+        elseif isVisible and current_screen ~= console_screen then
+            -- $ Update Visibility of Console:
+            isVisible = false
+        end
+    end
+end
+
+--[[
+    >>>
+        PROGRAM
+        CLOCK
+    <<<
+]]
+
+function MODULE_CLOCK()
+    while true do
+        sleep(0.05)
+        local time = textutils.formatTime(os.time(), false)
+    
+        -- # Print out Time:
+        term.setCursorPos(bottom_bar, w - time:len() + 1, 1)
+        term.write(bottom_bar, time)
+    
+        -- # Check for Extended String:
+        if time:len() == 7 then
+            term.setCursorPos(bottom_bar, w - time:len(), 1)
+            term.write(bottom_bar, " ")
+        end
+    end
+end
+
+--[[
+    >>>
+        PROGRAM
+        TERMINATIONS
+    <<<
+]]
+
+function MODULE_TERMINATION()
+    while true do
+        local e1, e2, e3, e4 = os.pullEvent()
+        if e1 == "key" and e2 == keys["end"] then
+            terminate = true
+        end
+
+        if button_close:call(e1, e3, e4) then
+            terminate = true
+        end
+
+        if terminate then
+            environment:stop()
+            break
+        end
+    end
+end
+
+-- # Adding Modules:
+environment:add("MAIN_SCREEN", MODULE_MAIN_SCREEN)
+environment:add("EDIT_PROFILE", MODULE_EDIT_PROFILE)
+environment:add("FILE_SELECTION", MODULE_FILE_SELECTION)
+environment:add("TURTLE_SELECTION", MODULE_TURTLE_SELECTION)
+environment:add("CONSOLE", MODULE_CONSOLE)
+environment:add("CLOCK", MODULE_CLOCK)
+environment:add("TERMINATION", MODULE_TERMINATION)
+
+-- # Run Environment:
+environment:run()
+
+-- # Unloading the APIs if Errored or Program Ended:
+if not C9 then
+    if environment.errored then
+        UNLOAD_APIS(false)
+    else
+        UNLOAD_APIS(true)
+    end
+end
+
+-- End of Document
