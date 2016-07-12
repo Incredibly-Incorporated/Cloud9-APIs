@@ -1,0 +1,197 @@
+-- # Program API Directory Files:
+local APIS = {
+    ["BUTTON"]      = "unearth/apis/Button",
+    ["CRAFT"]       = "unearth/apis/Craft",
+    ["DEBUGGER"]    = "unearth/apis/Debugger",
+    ["ENVIRONMENT"] = "unearth/apis/Environment",
+    ["SCREEN"]      = "unearth/apis/Screen",
+    ["TEXT"]        = "unearth/apis/Text",
+    ["WINDOW"]      = "unearth/apis/Window" 
+}
+
+-- # Functions for Loading & Unloading APIs into/from Environment:
+local function LOAD_APIS(doPrint)
+    for ID, path in pairs(APIS) do
+        if not os.loadAPI(path) then
+            error("\n[API: "..path.."]\nStatus: <Error>\n---", 2)
+        end
+        if doPrint then
+            print("[API: "..path.."]\nStatus: <Loaded>\n---")
+            sleep(0.05)
+        end
+    end
+end
+LOAD_APIS(true)
+
+-- $ Local Program Variables:
+local w, h = term.getSize()
+local terminate = false
+
+-- $ Local Program Objects:
+local term = Screen.new()
+local environment = Environment.new()
+
+-- $ Local Screen to Term:
+local top_bar = term:add(1, 1, w, 1, colors.white, colors.blue, 2)
+local bottom_bar = term:add(1, h, w, 1, colors.black, colors.lightGray, 2)
+
+-- $ Main Button Modules:
+local button_close = Button.new({
+    ["text"] = string.char(215),
+    ["xPos"] = w - 2,
+    ["yPos"] = 1,
+    ["xPad"] = 1,
+    ["foreground"] = colors.white,
+    ["background"] = colors.red,
+    ["bFlash"] = colors.gray,
+    ["screen"] = top_bar
+})
+
+local button_calculator = Button.new({
+    ["text"] = "[Calculator]",
+    ["xPos"] = 1,
+    ["yPos"] = 1,
+    ["foreground"] = colors.white,
+    ["background"] = colors.blue,
+    ["screen"] = top_bar
+})
+
+local button_run = Button.new({
+    ["text"] = "[Run]",
+    ["xPos"] = 14,
+    ["yPos"] = 1,
+    ["foreground"] = colors.white,
+    ["background"] = colors.blue,
+    ["screen"] = top_bar
+})
+
+-- $ Local Program Windows:
+local calc_window, calc_screen = Window.new({
+    ["name"] = "Calculator",
+    ["width"] = 25,
+    ["height"] = 9,
+    ["startX"] = 2,
+    ["startY"] = 2,
+    ["screen"] = term,
+    ["visible"] = false,
+    ["titlebar_name"] = "Number Pad",
+    ["titlebar_foreground"] = colors.white,
+    ["titlebar_background"] = colors.lime,
+    ["titlebar_design"] = "windows",
+    ["window_foreground"] = colors.white,
+    ["window_background"] = colors.gray,
+    ["can_move"] = true,
+    ["can_resize"] = false,
+    ["can_minimize"] = false,
+    ["can_maximize"] = false,
+    ["can_close"] = true
+})
+
+-- $ Local Program Functions:
+local function calculator()
+    term.clear(calc_screen)
+    term.setCursorPos(calc_screen, 1, 1)
+    term.write(calc_screen, "Hello!")
+end
+
+-- $ Local Startup Script:
+term:setBackgroundColor(colors.purple)
+term:clear()
+term.clear(top_bar)
+term.clear(bottom_bar)
+button_close:display()
+button_calculator:display()
+button_run:display()
+
+-- $ Program Modules:
+--[[
+    >>>
+        CALCULATOR
+        MODULE
+    <<<
+]]
+
+local function MODULE_CALCULATOR()
+    -- # Local Module Variables:
+    local visible = false
+
+    -- # Event Handler:
+    while true do
+        local event, p1, p2, p3 = os.pullEvent()
+
+        if button_calculator:call(event, p2, p3) then
+            if not visible then
+                calc_window:display(true)
+            else
+                calc_window:display(false)
+            end
+        elseif button_run:call(event, p2, p3) then
+            calc_window:run(calculator)
+        elseif calc_window:move(event, p2, p3) then
+            -- Skip
+        end
+    end
+end
+
+--[[
+    >>>
+        PROGRAM
+        CLOCK
+    <<<
+]]
+
+local function MODULE_CLOCK()
+    while true do
+        sleep(0.05)
+        local time = textutils.formatTime(os.time(), false)
+    
+        -- # Print out Time:
+        term.setCursorPos(bottom_bar, w - time:len() + 1, 1)
+        term.write(bottom_bar, time)
+    
+        -- # Check for Extended String:
+        if time:len() == 7 then
+            term.setCursorPos(bottom_bar, w - time:len(), 1)
+            term.write(bottom_bar, " ")
+        end
+    end
+end
+
+--[[
+    >>>
+        PROGRAM
+        TERMINATIONS
+    <<<
+]]
+
+function MODULE_TERMINATION()
+    while true do
+        local e1, e2, e3, e4 = os.pullEvent()
+        if e1 == "key" and e2 == keys["end"] then
+            terminate = true
+        end
+
+        if e1 == "key" and e2 == keys.enter then
+            calc_window:debug()
+        end
+
+        if button_close:call(e1, e3, e4) then
+            terminate = true
+        end
+
+        if terminate then
+            environment:stop()
+            break
+        end
+    end
+end
+
+-- $ Adding Modules:
+environment:add("CALCULATOR", MODULE_CALCULATOR)
+environment:add("CLOCK", MODULE_CLOCK)
+environment:add("TERMINATE", MODULE_TERMINATION)
+
+-- $ Run Program:
+environment:run()
+
+-- End of Document
