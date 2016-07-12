@@ -1,0 +1,519 @@
+--[[
+# 'Text' API Documentation:
+
+The text API is designed to handle all text
+display requests received from APIs, scripts,
+and interfaces. In addition to this, this API
+is also capable of advanced string manipulation
+such as centering vertically & horizontally, as well
+as other various string management capabilities.
+This API utilizes table parameters in some cases.
+
+Refer to function documentation for any general
+inquiries. 
+<>
+]]
+
+--[[ENVIRONMENT VARIABLES]]--
+VERSION = "2.2.0"
+
+--[[
+# Function: 'center', Documentation:
+
+This function is used to center text based upon
+column, row, or both.
+
+> Parameter Table: {
+["Index"]  | TYPE                | <REQ/OPT>  | Information:
+-----------+---------------------+------------+-------------
+["length"] | STRING/TABLE/NUMBER | <OPTIONAL> | How long the string is.
+["startX"] | NUMBER              | <OPTIONAL> | Where to center from horizontally.
+["startY"] | NUMBER              | <OPTIONAL> | Where to center from vertically.
+["roundX"] | STRING              | <OPTIONAL> | Pass ['ceil'] as an argument for
+           |                     |            | rounding up, and pass ['floor'] 
+           |                     |            | as an argument for rounding down.
+["roundY"] | STRING              | <OPTIONAL> | Same as roundX.
+["width"]  | NUMBER              | <OPTIONAL> | How wide is the window we're rounding to.
+["height"] | NUMBER              | <OPTIONAL> | How tall is the window we're rounding to.
+["debug"]  | BOOLEAN             | <OPTIONAL> | Whether or not to check if you have correct data.
+-----------+---------------------+------------+-------------
+}
+
+> Returns:
+@return: 'xPos', 'yPos'
+@info  : Returns the coord of the last character printed.
+
+> Notes:
+This function utilizes a parameter table. In order
+to properly use this function look at the example:
+
+local xPos, yPos = Text.center({
+    ["length"] = "Hello World!";
+    ["startX"] = 0;
+    ["startY"] = 0;
+    ["roundX"] = "ceil";
+    ["roundY"] = "floor";
+    ["width"] = 51;
+    ["height"] = 19;
+})
+
+The variables don't have to be typed in any particular
+order, nor do you need to have all variables unless 
+otherwise noted by the function documentation.
+
+Terminal information is used as basis for absent information
+in this situation.
+<>
+]]
+
+function center(data)
+    -- # Declaring Local Variables:
+    if not data then data = {} end
+    if not data.debug then data.debug = true end
+
+    local w, h       = term.native().getSize()
+    local xPos, yPos = 0, 0
+    local length     = data.length or 0
+    local startX     = data.startX or 0
+    local startY     = data.startY or 0
+    local roundX     = data.roundX or "ceil"
+    local roundY     = data.roundY or "floor"
+    local width      = data.width or w
+    local height     = data.height or h
+
+    -- # Checking Local Variables:
+    if data.debug and Debugger.check then
+        Debugger.check(length, "['length']", "string", "table", "number")
+        Debugger.check(startX, "['startX']", "number")
+        Debugger.check(startY, "['startY']", "number")
+        Debugger.check(width, "['width']", "number")
+        Debugger.check(height, "['height']", "number")
+        Debugger.check(roundX, "['roundX']", "ceil", "floor")
+        Debugger.check(roundY, "['roundY']", "ceil", "floor")
+    end
+
+    -- # Code:
+    if type(length) == "string" then
+        length = length:len()
+    elseif type(length) == "table" then
+        local sLen, text = 0, nil
+        for i = 1, #length do
+            text = tostring(length[i])
+            sLen = sLen + text:len()
+        end
+        length = sLen
+    elseif type(length) ~= "number" then
+        length = 0
+    end
+
+    if math.fmod(width, 2) == 1 then
+        roundX = "ceil"
+    else
+        roundX = "floor"
+    end
+
+    if roundX == "floor" then
+        xPos = startX + math.floor(width / 2) - math.floor(length / 2)
+    else
+        xPos = startX + math.ceil(width / 2) - math.ceil(length / 2)
+    end
+
+    if math.fmod(width, 2) == 0 then
+        if math.fmod(length, 2) == 1 and w ~= width then 
+            xPos = xPos + 1
+        end
+    end
+
+    if roundY == "floor" then
+        yPos = startY + math.floor(height / 2)
+    else
+        yPos = startY + math.ceil(height / 2)
+    end
+
+    if length == width then
+        xPos = startX
+    end
+
+    return xPos, yPos
+end
+
+--[[
+# Function: 'display', Documentation:
+
+This function is used to write text to the screen
+in the most advanced way possible.
+
+> Parameter Table: {
+["Index"]      | TYPE         | <REQ/OPT>  | Information:
+---------------+--------------+------------+-------------
+["text"]       | STRING/TABLE | <REQUIRED> | What we're writing.
+["foreground"] | COLOR/TABLE  | <OPTIONAL> | The font color of the text.
+["background"] | COLOR/TABLE  | <OPTIONAL> | The background color of the text.
+["startX"]     | NUMBER       | <OPTIONAL> | Where to place the text horizontally.
+["startY"]     | NUMBER       | <OPTIONAL> | Where to place the text vertically.
+["width"]      | NUMBER       | <OPTIONAL> | The width of your screen.
+["height"]     | NUMBER       | <OPTIONAL> | The height of your screen.
+["buffer"]     | BOOLEAN      | <OPTIONAL> | Whether or not to ignore height restrictions,
+               |              |            | and buffer text to the provided screen.
+["wrapper"]    | STRING       | <OPTIONAL> | Pass ['new line'] as an argument to add
+               |              |            | a new line when the width is met. Or,
+               |              |            | pass ['concat'] to insert a ... before
+               |              |            | the width border is met.
+["screen"]     | TABLE OBJECT | <OPTIONAL> | Add your screen object here if you have one.
+["centerX"]    | BOOLEAN      | <OPTIONAL> | Whether or not to center horizontally.
+["centerY"]    | BOOLEAN      | <OPTIONAL> | Whether or not to center vertically.
+["roundX"]     | STRING       | <OPTIONAL> | Pass ['ceil'] as an argument for
+               |              |            | rounding up, and pass ['floor'] 
+               |              |            | as an argument for rounding down.
+["roundY"]     | STRING       | <OPTIONAL> | Same as roundX.
+["display"]    | BOOLEAN      | <OPTIONAL> | Whether or not to display text. Use case is
+               |              |            | meant for determining what the last xPos, yPos
+               |              |            | of a print statement would be without actually
+               |              |            | printing the words. Ex: Button library.
+["debug"]      | BOOLEAN      | <OPTIONAL> | Whether or not to check if you have correct data.
+---------------+--------------+------------+-------------
+}
+
+> Returns:
+@return: 'xPos', 'yPos'
+@info  : The coords of the last character printed.
+
+> Notes:
+1: This function utilizes a parameter table. Refer to
+the center function documentation to look at an
+example of how to use this feature.
+
+2: If your string table comes with a color table,
+ensure they number of indexes matches, or else you
+may encounter unexpected results. Example:
+
+local strings = {
+    [1] = "Hello ";
+    [2] = "World";
+    [3] = "!";
+}
+
+local strings_foreground = {
+    [1] = colors.orange;
+    [2] = colors.blue;
+    [3] = colors.red;
+}
+
+local strings_background = {
+    [1] = colors.blue;
+    [2] = colors.orange;
+    [3] = colors.green;
+}
+
+If your indexes don't match, the function will
+apply the last color used to the rest of the
+string. I'll let you decide the use-case for this.
+<>
+]]
+
+function display(data)
+    -- # Critical Error Check:
+    if not data or type(data) ~= "table" then
+        error("<data> must be type table; got "..type(data), 2)
+    end
+
+    -- # Applying Unknown Variable Patches:
+    local screen = nil
+    if data.screen then
+        if data.screen.isScreen then
+            screen = data.screen:hook()
+        else
+            error("['screen'] is not a valid terminal object!", 2)
+        end
+    else
+        screen = term.current()
+    end
+
+    -- # Declaring Local Variables:
+    local w, h       = screen.getSize()
+    local xPos, yPos = 0, 0
+    local paragraph  = {}
+    local text       = data.text or "nil"
+    local foreground = data.foreground or screen.getTextColor()
+    local background = data.background or screen.getBackgroundColor()
+    local startX     = data.startX or 1
+    local startY     = data.startY or 0
+    local buffer     = data.buffer or false
+    local wrapper    = data.wrapper or "concat"
+    local centerX    = data.centerX or false
+    local centerY    = data.centerY or false
+    local roundX     = data.roundX or "ceil"
+    local roundY     = data.roundY or "floor"
+    local width      = data.width or w
+    local height     = data.height or h
+    local display    = data.display or true
+
+    if not data.debug then data.debug = true end
+
+    -- # Checking Local Variables:
+    if data.debug and Debugger.check then
+        Debugger.check(foreground, "['foreground']", "number", "table")
+        Debugger.check(background, "['background']", "number", "table")
+        Debugger.check(startX, "['startX']", "number")
+        Debugger.check(startY, "['startY']", "number")
+        Debugger.check(centerX, "['centerX']", "boolean")
+        Debugger.check(centerY, "['centerY']", "boolean")
+        Debugger.check(width, "['width']", "number")
+        Debugger.check(height, "['height']", "number")
+        Debugger.check(buffer, "['buffer']", "boolean")
+        Debugger.check(display, "['display']", "boolean")
+        Debugger.check(roundX, "['roundX']", "ceil", "floor")
+        Debugger.check(roundY, "['roundY']", "ceil", "floor")
+        Debugger.check(wrapper, "['wrapper']", "concat", "new line")
+    end
+
+    -- # Code:
+    -- > Transmitting Text into Table if it is a String:
+    if type(text) == "string" then
+        text = {text}
+    elseif type(text) ~= "table" then
+        if data.debug and Debugger.check then
+            Debugger.check(text, "['text']", "string", "table")
+        else
+            error("['text'] does not match type; 'string', or, 'table'; got, <"..tostring(text)..">; as type, '"..type(text).."'", 2)
+        end
+    end
+
+    -- > Applying Unknown Variable Patches After Error Checking:
+    if centerY then
+        _, yPos = center({
+            startY = startY,
+            roundY = roundY,
+            height = height
+        })
+    elseif not centerY and startY == 0 then
+        yPos = 1
+    end
+
+    if xPos == 0 and not centerX then
+        xPos = startX or 1
+    elseif centerX and data.screen then
+        if not data.screen.isParent and data.screen.width == data.screen.parent.width then
+            xPos, startX = 0, 1
+        end
+    end
+    if yPos == 0 and not centerY then
+        yPos = startY or 1
+    end
+
+    -- > Building Paragraph Table & Adding Color to Text:
+    local word, words = "", ""
+    local start, stop = 0, 0
+    local tCol, bCol  = nil, nil
+
+    for i = 1, #text do
+        -- > Reset Variables & Reformat words after each Word Patch:
+        words       = tostring(text[i])
+        words       = string.gsub(words, " \n", "\n")
+        words       = string.gsub(words, "\n", "\n ")
+        start, stop = 0, 0
+        tCol, bCol  = nil, nil
+
+        -- > Font Color Patching:
+        if type(foreground) == "table" then
+            if not foreground[i] then
+                tCol = foreground[#foreground]
+            else
+                tCol = foreground[i]
+            end
+        else
+            tCol = foreground
+        end
+
+        -- > Background Color Patching:
+        if type(background) == "table" then
+            if not background[i] then
+                bCol = background[#background]
+            else
+                bCol = background[i]
+            end
+        else
+            bCol = background
+        end
+
+        -- > Identify Individual Words:
+        while true do
+            start = start + 1
+
+            if string.find(words, " ", start) == nil then
+                word = string.sub(words, start, words:len())
+
+                if string.find(word, "\n ", 1) then
+                    table.insert(paragraph, {
+                        ["text"] = string.gsub(word, "\n ", ""),
+                        ["foreground"] = tCol,
+                        ["background"] = bCol,
+                        ["new_line"] = true
+                    })
+                elseif word ~= "" then
+                    table.insert(paragraph, {
+                        ["text"] = word,
+                        ["foreground"] = tCol,
+                        ["background"] = bCol,
+                        ["new_line"] = false
+                    })
+                end
+                break
+            else
+                _, stop = string.find(words, " ", start)
+                word = string.sub(words, start, stop)
+
+                if string.find(word, "\n ", 1) then
+                    table.insert(paragraph, {
+                        ["text"] = string.gsub(word, "\n ", ""),
+                        ["foreground"] = tCol,
+                        ["background"] = bCol,
+                        ["new_line"] = true
+                    })
+                elseif word ~= "" then
+                    table.insert(paragraph, {
+                        ["text"] = word,
+                        ["foreground"] = tCol,
+                        ["background"] = bCol,
+                        ["new_line"] = false
+                    })
+                end
+                start = stop
+            end
+        end
+    end
+
+    -- > Adding (xPos, yPos) Posititons to Identified Words:
+    local sentences, sentence, word, kill = {{}}, {}, nil, false
+    local senLength, curSen, curWord, cHeight = 0, 1, 0, 0
+
+    -- # Build Sentences:
+    for i = 1, #paragraph do
+        senLength = senLength + paragraph[i]["text"]:len()
+
+        if not sentences[curSen + 1] then
+            sentences[curSen + 1] = {}
+        end
+
+        if senLength <= width and not paragraph[i]["new_line"] then
+            table.insert(sentences[curSen], paragraph[i]["text"])
+        elseif senLength > width or paragraph[i]["new_line"] then
+            -- $ Removes Extra Space from Last Word in Sentence:
+            if not paragraph[i]["new_line"] or paragraph[i]["new_line"] and senLength > width then
+                paragraph[i - 1]["text"] = string.gsub(paragraph[i - 1]["text"], " ", "")
+                sentences[curSen][#sentences[curSen]] = paragraph[i - 1]["text"]
+                
+                -- $ Apply Space to New Lined Word if Exceeded Width:
+                if paragraph[i]["new_line"] and senLength > width then
+                    paragraph[i]["text"] = paragraph[i]["text"].." "
+                end
+
+                -- $ Push Word That Exceeded Border into Next Sentence:
+                table.insert(sentences[curSen + 1], paragraph[i]["text"])
+                senLength, curSen = paragraph[i]["text"]:len(), curSen + 1
+            else
+                table.insert(sentences[curSen], paragraph[i]["text"])
+                senLength, curSen = 0, curSen + 1
+            end
+            
+            if wrapper == "concat" then
+                paragraph[i-1]["last_word"] = true
+                break
+            end
+        end
+    end
+
+    -- # Remove Empty Table:
+    -- $ Move Table Creation @ End of For Block & Remove Below:
+    sentences[#sentences] = nil
+
+    -- # Apply Positions to Words Based Upon Sentences:
+    for _sentence = 1, #sentences do
+        -- $ Local Wrap for Easier Read:
+        sentence = sentences[_sentence]
+
+        -- $ Apply xPos Logic Passed Upon Arguments:
+        if centerX then
+            xPos = center({
+                length = sentence,
+                startX = startX,
+                roundX = roundX,
+                width = width
+            })
+        else
+            xPos = startX
+        end
+
+        -- $ Apply Actual Positions to Words:
+        for _word = 1, #sentences[_sentence] do
+            -- $ Local Wrap for Easier Read:
+            word, curWord = sentences[_sentence][_word], curWord + 1
+
+            -- $ Apply Positions:
+            paragraph[curWord]["xPos"] = xPos
+            
+            if #sentences ~= height and not buffer then
+                if math.fmod(height, 2) == 1 and not data.screen then
+                    cHeight = math.floor(#sentences / 3)
+                else
+                    cHeight = math.ceil(#sentences / 3)
+                end
+    
+                if centerY and yPos - cHeight <= height then
+                    paragraph[curWord]["yPos"] = yPos - cHeight
+                elseif yPos <= height then
+                    paragraph[curWord]["yPos"] = yPos
+                end
+            else
+                paragraph[curWord]["yPos"] = yPos
+            end
+
+            -- $ Update xPos for Next Word:
+            xPos = xPos + word:len()
+
+            -- $ Apply Concatenation if Applicable:
+            if paragraph[curWord]["last_word"] then
+                word = paragraph[curWord]
+
+                if word["xPos"] + word["text"]:len() > width - 2 then
+                    local exceedance = word["xPos"] + word["text"]:len() + 2
+                    word["text"] = string.sub(word["text"], 1, (word["text"]:len() - (exceedance - width))).."..."
+                else
+                    word["text"] = word["text"].."..."
+                end
+
+                kill = true
+                break
+            end
+        end
+
+        -- $ Move yPos Up One for New Line: 
+        yPos = yPos + 1
+
+        -- $ Stop Positioning if Killed:
+        if kill then break end
+    end
+
+    -- > Write Paragraph to Screen:
+    for i = 1, #paragraph do
+        if display then
+            if paragraph[i]["xPos"] == nil or paragraph[i]["yPos"] == nil then
+                break
+            end
+
+            screen.setCursorPos(paragraph[i]["xPos"], paragraph[i]["yPos"])
+            screen.setTextColor(paragraph[i]["foreground"])
+            screen.setBackgroundColor(paragraph[i]["background"])
+            screen.write(paragraph[i]["text"])
+        else
+            break
+        end
+
+        xPos, yPos = paragraph[i]["xPos"], paragraph[i]["yPos"]
+    end
+
+    -- > Return Character That Printed Last:
+    return xPos, yPos
+end
+
+-- End of Document

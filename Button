@@ -1,0 +1,667 @@
+--[[
+# Button API Documentation:
+
+The Button API is designed to provide returnable
+buttons in which you can interact with, based upon
+the provided input. 
+
+It is up to the developer on how s/he want to use
+this information in regards to event pulling the button, 
+and dealing with overlapping. Support functions for 
+event pulling are included, but do not actually yield to 
+any functions.
+
+Refer to function documentation for any general
+inquiries. 
+<>
+]]
+
+--[[ENVIRONMENT VARIABLES]]--
+VERSION = "1.5.2"
+
+--[[LOCAL VARIABLES ZONE:]]--
+local functions = {}
+
+--[[
+# Function: 'display', Documentation:
+
+This function is used to display the button.
+
+> Parameters:
+<Parameter> | TYPE         | Information:
+------------+--------------+-------------
+<button>    | TABLE OBJECT | The button object to display. 
+<flash>     | BOOLEAN      | Whether or not to flash the button.
+------------+--------------+-------------
+
+> Returns:
+@return: <nil>
+
+> Notes:
+You can also pass "flash" as an argument when
+invoking this function. Passing "flash" is the
+same as passing 'true'.
+<>
+]]
+
+functions.display = function(button, flash)
+    -- # Declaring Local Variables:
+    local screen, wrapper, background, foreground, cache = nil, nil, nil, nil, nil
+
+    -- # Checking Local Variables:
+    if type(button) ~= "table" then
+        error("[button] must be a button object; got, <"..tostring(button)..">; as type ("..type(button)..")", 2)
+    elseif not button.isButton then
+        error("[button] is not a valid button object.", 2)
+    end
+
+    if button.screen then
+        screen = button.screen
+    end
+
+    -- # Code:
+    -- > Apply Applicable Background Color:
+    if not flash then
+        background = button.background
+        foreground = button.foreground
+    elseif flash == true or "flash" then
+        background = button.bFlash
+        foreground = button.tFlash
+    end
+
+    -- > Draw Button Box:
+    Craft.drawFilledBox(
+        button.startX, 
+        button.startY, 
+        button.endX, 
+        button.endY, 
+        background, 
+        screen,
+        button.overwrite
+    )
+
+    -- > Apply Text:
+    Text.display({
+        ["text"] = button.text,
+        ["foreground"] = foreground,
+        ["background"] = background,
+        ["startX"] = button.startX,
+        ["startY"] = button.startY + button.yPad,
+        ["wrapper"] = button.wrapper,
+        ["screen"] = screen,
+        ["centerX"] = true,
+        ["width"] = button.width,
+        ["height"] = button.height
+    })
+end
+
+--[[
+# Function: 'check', Documentation:
+
+This function is used to check if a button was
+clicked. Will return true based upon input, or false.
+
+> Parameters:
+<Parameter> | TYPE         | Information:
+------------+--------------+-------------
+<button>    | TABLE OBJECT | The button object to check. 
+<xPos>      | NUMBER       | What column the mouse was clicking in.
+<yPos>      | NUMBER       | What row the mouse was clicking in.
+------------+--------------+-------------
+
+> Returns:
+@return: <boolean>
+@info  : Returns true if button was clicked, false otherwise.
+
+<>
+]]
+
+functions.check = function(button, xPos, yPos)
+    -- # Checking Local Variables:
+    if type(button) ~= "table" then
+        error("[button] must be a button object; got, <"..tostring(button)..">; as type ("..type(button)..")", 2)
+    elseif not button.isButton then
+        error("[button] is not a valid button object.", 2)
+    end
+
+    if type(xPos) ~= "number" or type(yPos) ~= "number" then
+        return false
+    end
+
+    -- # Declaring Local Variables:
+    local startX, startY, endX, endY = 0, 0, 0, 0
+    if button.screen then
+        local hook, adult = button.screen:hook(), nil
+
+        if button.screen.isParent then
+            adult = button.screen
+        else
+            adult = button.screen.parent
+        end
+
+        local ok, s_xPos, s_yPos = pcall(hook.convert, xPos, yPos)
+        if not ok then
+            return false
+        end
+
+        local sPixel = button.screen(s_xPos, s_yPos)
+        if not sPixel then
+            return false
+        end
+
+        local tPixel = adult.terminal[sPixel["yPos"]][sPixel["xPos"]]
+        if sPixel["level"] >= tPixel["level"] then
+            startX, startY = button.screen.startX, button.screen.startY
+            endX, endY = button.screen.endX, button.screen.endY
+        else
+            return false
+        end
+    else
+        startX, startY = button.startX, button.startY
+        endX, endY = button.endX, button.endY
+    end
+
+    -- # Code:
+    if xPos >= startX and xPos <= endX and yPos >= startY and yPos <= endY then
+        return true
+    else
+        return false
+    end
+end
+
+--[[
+# Function: 'call', Documentation:
+
+This function is used to check if a button was
+clicked, similar to 'check', however; it will flash
+the button for however long the button is held. As a
+bonus feature, if the user lets go of the mouse
+outside the button's parameters, then the function will 
+return an unsuccessful button click. Otherwise, it will 
+return a successful button click. This should function 
+needs to be used inside an event environment.
+
+> Parameters:
+<Parameter> | TYPE         | Information:
+------------+--------------+-------------
+<button>    | TABLE OBJECT | The button object to check with. 
+<e1>        | STRING       | Parameter 1, typically the event type.
+<e3>        | NUMBER       | Parameter 3, the xPos of click, or let go.
+<e4>        | NUMBER       | Parameter 4, the yPos of click, or let go.
+------------+--------------+-------------
+
+> Returns:
+@return: <boolean>
+@info  : Returns true if button was clicked, false otherwise.
+
+> Notes:
+IMPORTANT! In your event manager, do not check for a "mouse_click"
+before calling this function. This function will do that for you. 
+Otherwise, the button will lock up because it can't receive the 
+"mouse_up" event if there was one.
+
+<>
+]]
+
+functions.call = function(button, e1, e3, e4)
+    -- # Checking Local Variables:
+    if type(button) ~= "table" then
+        error("[button] must be a button object; got, <"..tostring(button)..">; as type ("..type(button)..")", 2)
+    elseif not button.isButton then
+        error("[button] is not a valid button object.", 2)
+    end
+
+    if type(e3) ~= "number" or type(e4) ~= "number" then
+        return false
+    end
+
+    -- # Code:
+    if e1 == "mouse_click" then
+        if button:check(e3, e4) then
+            button:display(true)
+            button.hold = true
+            return false
+        end
+    elseif e1 == "mouse_up" and button.hold == true and button:check(e3, e4) then
+        button:display(false)
+        button.hold = false
+        return true, e3, e4
+    elseif e1 == "mouse_up" and button.hold == true then
+        button:display(false)
+        button.hold = false
+        return false, e3, e4
+    elseif e1 == "mouse_drag" and button.hold == true then
+        return false, e3, e4
+    else
+        return false
+    end
+end
+
+--[[
+# Function: 'replace', Documentation:
+
+This function is used to replace a button based upon
+the startX, startY, endX, and endX given.
+
+> Parameters:
+<Parameter> | TYPE         | Information:
+------------+--------------+-------------
+<button>    | TABLE OBJECT | The button object to check with. 
+<startX>    | NUMBER       | What column to start the button in.
+<startY>    | NUMBER       | What row to start the button in.
+------------+--------------+-------------
+
+> Returns:
+@return: <boolean>
+@info  : Returns true if button was replaced, false otherwise.
+
+> Notes:
+IMPORTANT! The endX and endY must always be greater
+than, or equal to, the startX and endY positions!
+
+<>
+]]
+
+functions.replace = function(button, startX, startY)
+    -- # Declaring Local Variables:
+    local hook = nil
+    if button.screen then
+        hook = button.screen:hook()
+    end
+
+    -- # Checking Local Variables:
+    if type(button) ~= "table" then
+        error("[button] must be a button object; got, <"..tostring(button)..">; as type ("..type(button)..")", 2)
+    elseif not button.isButton then
+        error("[button] is not a valid button object.", 2)
+    end
+
+    if type(startX) ~= "number" then
+        error("[startX] does match type <number>; got, ["..tostring(startX).."]; as type, ("..type(startX)..")", 2)
+    elseif type(startY) ~= "number" then
+        error("[startY] does match type <number>; got, ["..tostring(startY).."]; as type, ("..type(startY)..")", 2)
+    end
+
+    -- # Code:
+    if button.screen then
+        hook.resize(startX, startY, button.width, button.height, button.screen.level)
+        startX, startY = hook.convert(startX, startY)
+    end
+
+    button.startX = startX
+    button.startY = startY - button.yPad
+    button.endX = startX + button.width - button.fix
+    button.endY = startY + button.vertex + button.yPad - 1
+
+    return true
+end
+
+--[[
+# Function: 'move', Documentation:
+
+This function is used to move a button based upon
+the arguments provided.
+
+> Parameters:
+<Parameter>  | TYPE         | Information:
+-------------+--------------+-------------
+<button>     | TABLE OBJECT | The button object to check with. 
+<e1>         | NUMBER       | Parameter 1, typically the event type.
+<e3>         | NUMBER       | Parameter 3, the xPos of click, or let go.
+<e4>         | NUMBER       | Parameter 4, the yPos of click, or let go.
+<ignore>     | STRING       | "x" to ignore where x moves, "y" to ignore
+             |              | where y moves. Useful for sliders.
+<comparator> | FUNCTION     | A comparator function if you need a special
+             |              | condition met. Useful for border checking.
+-------------+--------------+-------------
+
+> Returns:
+@return: <boolean>; <number>, <number>
+@info  : Returns true if button was moved, the
+x amount of pixels moved, and the y amount of
+pixels moved. Otherwise, returns false.
+
+> Notes:
+If you define a comparator function, it must return
+true if your condition is met, false otherwise!
+
+<>
+]]
+
+functions.move = function(button, e1, e3, e4, ignore, comparator)
+    -- # Declaring Local Variables:
+    local hook = nil
+    if button.screen and button.screen.isScreen then
+        hook = button.screen:hook()
+    end
+
+    -- # Checking Local Variables:
+    if type(button) ~= "table" then
+        error("[button] must be a button object; got, <"..tostring(button)..">; as type ("..type(button)..")", 2)
+    elseif not button.isButton then
+        error("[button] is not a valid button object.", 2)
+    end
+
+    if type(e3) ~= "number" or type(e4) ~= "number" then
+        return false
+    end
+
+    if comparator then
+        if not comparator() then
+            if e1 == "mouse_up" then
+                button.hold = false
+                button:display()
+            end
+            return false
+        end
+    end
+
+    -- # Code:
+    local prevX, prevY = e3, e4
+    local _, x, y = button:call(e1, e3, e4)
+    if ignore == "x" then
+        x = button.screen.pixels[1][1]["xPos"]
+    elseif ignore == "y" then
+        y = button.screen.pixels[1][1]["yPos"]
+    end
+    
+    if button.screen and x and y then
+        prevX, prevY = hook.revert(button.startX, button.startY)
+        button:replace(x, y)
+        button:display(true)
+        hook.refresh(true)
+        
+        if e1 == "mouse_up" then
+            button.hold = false
+            button:display()
+        end
+        return true, prevX - x, prevY - y
+    elseif not button.screen and x and y then
+        button:replace(x, y)
+        for y = prevY, button.startY do
+            for x = prevX, button.startX do
+                term.setCursorPos(x, y)
+                term.write(" ")
+            end
+        end
+        button:display(true)
+        return true, prevX - button.startX, prevY - button.startY
+    elseif not x or not y then
+        if e1 == "mouse_up" then
+            button.hold = false
+            button:display()
+        end
+        return false
+    end
+end
+
+--[[
+# Function: 'debug', Documentation:
+
+This function is used to debug a button.
+
+> Parameters:
+<Parameter> | TYPE           | Information:
+------------+----------------+-------------
+<button>    | TABLE OBJECT   | Your button object.
+<file>      | STRING         | Directory path of your file.
+------------+----------------+-------------
+
+> Returns:
+@return: <nil>
+
+<>
+]]
+
+functions.debug = function(button, file)
+    -- # Checking Environment:
+    if type(button) ~= "table" or not button.isButton then error("[button] was not defined!", 2) end
+
+    -- # Declaring Local Variables:
+    local ID = "Button <"..tostring(button)..">:"
+
+    -- # Checking Local Variables:
+    if not file and C9 then 
+        file = C9.BUTTON_LOG 
+    elseif not fs.exists(file) then
+        error("['file'] does not exist!", 2)
+    else
+        error("['file'] is not valid!", 2)
+    end
+
+    -- # Code:
+    Debugger.log(file, "w", button, ID)
+end
+
+--[[END LOCAL FUNCTIONS ZONE]]--
+
+--[[
+# Function: 'new', Documentation:
+
+This function is used to provide an object in
+which the user can manage a button. 
+
+> Parameter Table: {
+["Index"]      | TYPE         | <REQ/OPT>  | Information:
+---------------+--------------+------------+-------------
+["text"]       | STRING       | <OPTIONAL> | What to display in the button.
+["xPos"]       | NUMBER       | <REQUIRED> | What column to place the start of the button in.
+["yPos"]       | NUMBER       | <REQUIRED> | What row to place the start of the button in.
+["xPad"]       | NUMBER       | <OPTIONAL> | Width padding to make your button look wider.
+["yPad"]       | NUMBER       | <OPTIONAL> | Height padding to make your button taller.
+["foreground"] | COLOR        | <OPTIONAL> | What text color the button should have.
+["background"] | COLOR        | <REQUIRED> | What background color the button should have.
+["bFlash"]     | COLOR        | <OPTIONAL> | What color to flash when the button is clicked.
+["tFlash"]     | COLOR        | <OPTIONAL> | What text color to flash when the button is clicked.
+["screen"]     | TABLE OBJECT | <OPTIONAL> | If you have a screen object, pass it here.
+["level"]      | NUMBER       | <OPTIONAL> | If you have a screen, and want to define the level of the button, pass it here.
+["overwrite"]  | BOOLEAN      | <OPTIONAL> | If you want the flash of this button to overwrite backgrounds of others. (Screen Required)
+["empty"]      | BOOLEAN      | <OPTIONAL> | If you pass 'true', then the xPad will not be multiplied. Useful for buttons with 'empty' strings...
+["width"]      | NUMBER       | <OPTIONAL> | Use this if you need to define a custom width for a certain situation.
+---------------+--------------+------------+-------------
+}
+
+> Returns:
+@return: <table>; [OOP]
+@info  : Ensure you assign a variable to your button.
+
+> Notes:
+Ensure all these variables are passed into a table. 
+Check documentation for optional variables.
+
+<>
+]]
+
+function new(pars)
+    -- # Declaring Local Variables:
+    local hook = nil
+
+    -- # Checking Local Variables:
+    if not pars or type(pars) ~= "table" then
+        error("[pars] must be type table, got; <"..tostring(pars)..">, as type; ("..type(pars)..")", 2)
+    end
+
+    if not pars.text or type(pars.text) ~= "string" and type(pars.text) ~= "table" then
+        if type(pars.text) ~= "nil" then 
+            pars.text = tostring(pars.text)
+        else
+            pars.text = " "
+        end
+    end
+
+    if not pars.xPos or type(pars.xPos) ~= "number" then
+        error("[xPos] must be type number, got; "..type(pars.xPos), 2)
+    end
+
+    if not pars.yPos or type(pars.yPos) ~= "number" then
+        error("[yPos] must be type number, got; "..type(pars.yPos), 2)
+    end
+
+    if not pars.xPad or type(pars.xPad) ~= "number" then
+        pars.xPad = 0
+    end
+
+    if not pars.yPad or type(pars.yPad) ~= "number" then
+        pars.yPad = 0
+    end
+
+    if not pars.foreground or type(pars.foreground) ~= "number" then
+        pars.foreground = colors.white
+    end
+
+    if not pars.background or type(pars.background) ~= "number" then
+        error("[background] must be type number, got; "..type(pars.background), 2)
+    end
+
+    if not pars.bFlash or type(pars.bFlash) ~= "number" then
+        pars.bFlash = pars.background
+    end
+
+    if not pars.tFlash or type(pars.tFlash) ~= "number" then
+        pars.tFlash = pars.foreground
+    end
+
+    if type(pars.screen) ~= "table" then
+        pars.screen = false
+        pars.overwrite = false
+    elseif type(pars.screen) == "table" and not pars.screen.isScreen then
+        error("[screen] is not a valid screen object!", 2)
+    else
+        hook = pars.screen:hook()
+        pars.xPos, pars.yPos = hook.revert(pars.xPos, pars.yPos)
+    end
+
+    if type(pars.overwrite) ~= "boolean" then
+        pars.overwrite = false
+    end
+
+    if not pars.screen and pars.level or type(pars.level) ~= "number" then
+        if not pars.screen then 
+            pars.level = false
+        else
+            pars.level = pars.screen.level + 1
+        end
+    end
+
+    if not pars.empty then
+        pars.empty = pars.xPad * 2
+    else
+        pars.empty = pars.xPad
+    end
+
+    -- # Declaring Logical Local Variables:
+    local length, vertex, str, query = 0, 1, nil, {}
+    if type(pars.text) == "table" then
+        for i = 1, #pars.text do
+            str = tostring(pars.text[i])
+            if not string.find(str, "\n") then
+                length = length + str:len()
+            else
+                table.insert(query, length)
+                length, vertex = 0, vertex + 1
+            end
+        end
+        if #query > 0 then
+            for i = 1, #query do
+                if query[i] > length then
+                    length = query[i]
+                end
+            end
+        end
+    elseif type(pars.text) == "string" then
+        length = pars.text:len()
+    end
+
+    local width = length + pars.empty
+    local height = vertex + (pars.yPad * 2)
+    local fix = 1
+    local hFix = 1
+    
+    if width == 0 then
+        fix = 0
+    end
+    if pars.yPad > 0 then
+        hFix = 0
+    end
+    if pars.width then
+        width = pars.width
+    end
+
+    local object = {
+        ["text"] = pars.text,
+        ["startX"] = pars.xPos,
+        ["startY"] = pars.yPos - pars.yPad,
+        ["endX"] = pars.xPos + width - fix,
+        ["endY"] = pars.yPos + vertex + pars.yPad - hFix,
+        ["xPad"] = pars.xPad,
+        ["yPad"] = pars.yPad,
+        ["width"] = width,
+        ["height"] = height,
+        ["foreground"] = pars.foreground,
+        ["background"] = pars.background,
+        ["bFlash"] = pars.bFlash,
+        ["tFlash"] = pars.tFlash,
+        ["wrapper"] = "new line",
+        ["parent"] = pars.screen,
+        ["screen"] = pars.screen,
+        ["level"] = pars.level,
+        ["overwrite"] = pars.overwrite,
+        ["vertex"] = vertex,
+        ["fix"] = fix
+    }
+
+    -- # Code:
+    for index, instruction in pairs(functions) do
+        object[index] = instruction
+    end
+
+    -- # Apply Assistive Library Boolean Patches:
+    object.isButton = true
+    object.hold = false
+
+    -- # Apply Applicable Level Changes via Screens:
+    if pars.level then
+        local hidden = false
+        if not object.parent.isVisible then
+            hidden = true
+        end
+
+        if object.screen.isParent then
+            object.screen = object.screen:add(
+                pars.xPos,
+                pars.yPos,
+                object.width,
+                object.height,
+                object.foreground,
+                object.background,
+                pars.level,
+                hidden
+            )
+        else
+            object.screen = object.screen.parent:add(
+                pars.xPos,
+                pars.yPos,
+                object.width,
+                object.height,
+                object.foreground,
+                object.background,
+                pars.level,
+                hidden
+            )
+        end
+        -- # Apply New Screen Patches:
+        object.startX, object.startY = 1, 1
+        object.endX, object.endY = object.startX + width - fix, object.startY + vertex + pars.yPad - hFix
+
+        -- # Apply Screen Visibility Tracing:
+        if not object.parent.buttons then
+            object.parent.buttons = {}
+        end
+    
+        table.insert(object.parent.buttons, object.screen)
+    end
+
+    return object
+end
+
+-- End of Document

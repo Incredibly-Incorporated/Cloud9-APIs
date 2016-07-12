@@ -1,0 +1,532 @@
+--[[
+# 'Craft' API Documentation:
+
+The Craft API is designed to handle all things
+paintutils, and then some. The goal of this library
+is to hook into the screen/text library to add
+infrastructure to displaying pixels in an advanced
+way via the Screen library. Anything you can do with
+paintutils, you can do with Craft. 
+
+Refer to function documentation for any general
+inquiries. 
+<>
+]]
+
+--[[ENVIRONMENT VARIABLES]]--
+VERSION = "1.1.3"
+
+--[[
+# Library Globals:
+
+The following table enables the user to call this
+library's paint colors when needing to convert
+colors into their paint counterparts instead of
+the decimals returned by color.<color>.
+<>
+]]
+
+Paint = {
+    ["white"] = 0,
+    ["orange"] = 1,
+    ["magenta"] = 2,
+    ["lightBlue"] = 3,
+    ["yellow"] = 4,
+    ["lime"] = 5,
+    ["pink"] = 6,
+    ["gray"] = 7,
+    ["lightGray"] = 8,
+    ["cyan"] = 9,
+    ["purple"] = "a",
+    ["blue"] = "b",
+    ["brown"] = "c",
+    ["green"] = "d",
+    ["red"] = "e",
+    ["black"] = "f"
+}
+
+--[[
+# Function: 'drawPixel', Documentation:
+
+This function is used to draw a pixel at the defined
+x, and y coords provided. A color can be specified,
+otherwise the current color of the terminal is used.
+
+> Parameters:
+<Parameter> | TYPE           | Information:
+------------+----------------+-------------
+<xPos>      | NUMBER         | The column in which to place the pixel. 
+<yPos>      | NUMBER         | The row in which to place the pixel.
+<color>     | NUMBER         | The color to make the pixel.
+<screen>    | TABLE OBJECT   | The screen object if applicable.
+<overwrite> | BOOLEAN/STRING | If this is set to 'true', default is false,
+            |                | then the program will pull the pixel information
+            |                | (if a screen is defined), and set the background
+            |                | color of that pixel to the defined color, and keep
+            |                | the same text, and text color.
+------------+----------------+-------------
+
+> Returns:
+@return: <nil>
+
+<>
+]]
+
+function drawPixel(xPos, yPos, color, screen, overwrite)
+    -- # Declaring Local Variables:
+    local terminal  = term.current() 
+    local overwrite = overwrite or false
+
+    if overwrite == "overwrite" then
+        overwrite = true
+    end
+
+    if screen and screen.isScreen then
+        terminal = screen:hook()
+    else
+        overwrite = false
+    end
+
+    local x, y = terminal.getCursorPos()
+    local xPos = xPos or x
+    local yPos = yPos or y
+
+    local cache = terminal.getBackgroundColor()
+    local color = color or terminal.getBackgroundColor()
+
+    -- # Checking Declared Variables:
+    if Debugger.check then
+        Debugger.check(xPos, "[xPos]", "number")
+        Debugger.check(yPos, "[yPos]", "number")
+        Debugger.check(color, "[color]", "number")
+        Debugger.check(overwrite, "[overwrite]", "boolean")
+    end
+
+    -- # Code:
+    if not overwrite then
+        terminal.setCursorPos(xPos, yPos)
+        terminal.setBackgroundColor(color)
+        terminal.write(" ")
+    else
+        terminal.setCursorPos(xPos, yPos)
+        local pixel = screen(terminal.getCursorPos())
+        
+        terminal.setBackgroundColor(color)
+        terminal.setTextColor(pixel["foreground"])
+        terminal.write(pixel["text"], true)
+    end
+
+    -- # Restores Background Color from Cache to Prevent Tearing:
+    terminal.setBackgroundColor(cache)
+end
+
+--[[
+# Function: 'drawLine', Documentation:
+
+This function is used to draw a line at the defined
+startX, and startY, to the defined endX, and endY
+coords provided. A color can be specified, otherwise the 
+current color of the terminal is used.
+
+> Parameters:
+<Parameter> | TYPE           | Information:
+------------+----------------+-------------
+<startX>    | NUMBER         | Which column to start drawing the line.
+<startY>    | NUMBER         | Which row to start drawing the line.
+<endX>      | NUMBER         | The last column to stop drawing the line.
+<endY>      | NUMBER         | The last row to stop drawing the line.
+<color>     | NUMBER         | The color the line will be.
+<screen>    | TABLE OBJECT   | The screen object if applicable.
+<overwrite> | BOOLEAN/STRING | Refer to previous documentation for details.
+------------+----------------+-------------
+
+> Returns:
+@return: <nil>
+
+> Notes:
+Some of the code used in the following functions were
+borrowed from the paintutils API, and have been modified
+for using the Screen API. Credits to dan200 for the
+paintutils code.
+
+<>
+]]
+
+function drawLine(startX, startY, endX, endY, color, screen, overwrite)
+    -- # Declaring Local Variables:
+    local terminal  = term.current()
+    local overwrite = overwrite or false
+    local screen    = screen or nil
+
+    if overwrite == "overwrite" then
+        overwrite = true
+    end
+
+    if screen and screen.isScreen then
+        terminal = screen:hook()
+    else
+        overwrite = false
+    end
+
+    local startX = math.floor(startX)
+    local startY = math.floor(startY)
+    local endX   = math.floor(endX)
+    local endY   = math.floor(endY)
+    local maxX   = nil
+    local minX   = math.min(startX, endX)
+    local maxY   = nil
+    local minY   = nil
+
+    local curColor = terminal.getBackgroundColor()
+    local color    = color or curColor
+
+    -- # Checking Defined Variables:
+    if Debugger.check then
+        Debugger.check(startX, "[startX]", "number")
+        Debugger.check(startY, "[startY]", "number")
+        Debugger.check(endX, "[endX]", "number")
+        Debugger.check(endY, "[endY]", "number")
+        Debugger.check(color, "[color]", "number")
+    end
+
+    -- # Code:
+    if startX == endX and startY == endY then
+        drawPixel(startX, startY, color, screen, overwrite)
+        return
+    end
+    
+    if minX == startX then
+        minY = startY
+        maxX = endX
+        maxY = endY
+    else
+        minY = endY
+        maxX = startX
+        maxY = startY
+    end
+        
+    local xDiff = maxX - minX
+    local yDiff = maxY - minY
+            
+    if xDiff > math.abs(yDiff) then
+        local y = minY
+        local dy = yDiff / xDiff
+        for x = minX, maxX do
+            drawPixel(x, math.floor(y + 0.5), color, screen, overwrite)
+            y = y + dy
+        end
+    else
+        local x = minX
+        local dx = xDiff / yDiff
+        if maxY >= minY then
+            for y = minY, maxY do
+                drawPixel(math.floor(x + 0.5), y, color, screen, overwrite)
+                x = x + dx
+            end
+        else
+            for y = minY, maxY, -1 do
+                drawPixel(math.floor(x + 0.5), y, color, screen, overwrite)
+                x = x - dx
+            end
+        end
+    end
+end
+
+--[[
+# Function: 'drawBox', Documentation:
+
+This function is used to draw an open box at the
+defined coordinates.
+
+> Parameters:
+<Parameter> | TYPE           | Information:
+------------+----------------+-------------
+<startX>    | NUMBER         | Which column to start drawing the open box.
+<startY>    | NUMBER         | Which row to start drawing the open box.
+<endX>      | NUMBER         | The last column to stop drawing the open box.
+<endY>      | NUMBER         | The last row to stop drawing the open box.
+<color>     | NUMBER         | The color the open box will be.
+<screen>    | TABLE OBJECT   | The screen object if applicable.
+<overwrite> | BOOLEAN/STRING | Refer to previous documentation for details.
+------------+----------------+-------------
+
+> Returns:
+@return: <nil>
+
+<>
+]]
+
+function drawBox(startX, startY, endX, endY, color, screen, overwrite)
+    -- # Declaring Local Variables:
+    local terminal  = term.current()
+    local overwrite = overwrite or false
+    local screen    = screen or nil
+
+    if overwrite == "overwrite" then
+        overwrite = true
+    end
+
+    if screen and screen.isScreen then
+        terminal = screen:hook()
+    else
+        overwrite = false
+    end
+
+    local startX = math.floor(startX)
+    local startY = math.floor(startY)
+    local endX   = math.floor(endX)
+    local endY   = math.floor(endY)
+    local maxX   = nil
+    local minX   = math.min(startX, endX)
+    local maxY   = nil
+    local minY   = nil
+
+    local curColor = terminal.getBackgroundColor()
+    local color    = color or curColor
+
+    -- # Checking Defined Variables:
+    if Debugger.check then
+        Debugger.check(startX, "[startX]", "number")
+        Debugger.check(startY, "[startY]", "number")
+        Debugger.check(endX, "[endX]", "number")
+        Debugger.check(endY, "[endY]", "number")
+        Debugger.check(color, "[color]", "number")
+    end
+
+    -- # Code:
+    if startX == endX and startY == endY then
+        drawPixel(startX, startY, color, screen, overwrite)
+        return
+    end
+
+    if minX == startX then
+        minY = startY
+        maxX = endX
+        maxY = endY
+    else
+        minY = endY
+        maxX = startX
+        maxY = startY
+    end
+
+    for x = minX, maxX do
+        drawPixel(x, minY, color, screen, overwrite)
+        drawPixel(x, maxY, color, screen, overwrite)
+    end
+
+    if (maxY - minY) >= 2 then
+        for y = (minY + 1), (maxY - 1) do
+            drawPixel(minX, y, color, screen, overwrite)
+            drawPixel(maxX, y, color, screen, overwrite)
+        end
+    end
+end
+
+--[[
+# Function: 'drawFilledBox', Documentation:
+
+This function is used to draw a filled box at the
+defined coordinates.
+
+> Parameters:
+<Parameter> | TYPE           | Information:
+------------+----------------+-------------
+<startX>    | NUMBER         | Which column to start drawing the filled box.
+<startY>    | NUMBER         | Which row to start drawing the filled box.
+<endX>      | NUMBER         | The last column to stop drawing the filled box.
+<endY>      | NUMBER         | The last row to stop drawing the filled box.
+<color>     | NUMBER         | The color the filled box will be.
+<screen>    | TABLE OBJECT   | The screen object if applicable.
+<overwrite> | BOOLEAN/STRING | Refer to previous documentation for details.
+------------+----------------+-------------
+
+> Returns:
+@return: <nil>
+
+<>
+]]
+
+function drawFilledBox(startX, startY, endX, endY, color, screen, overwrite)
+    -- # Declaring Local Variables:
+    local terminal  = term.current()
+    local overwrite = overwrite or false
+    local screen    = screen or nil
+
+    if overwrite == "overwrite" then
+        overwrite = true
+    end
+
+    if screen and screen.isScreen then
+        terminal = screen:hook()
+    else
+        overwrite = false
+    end
+
+    local startX = math.floor(startX)
+    local startY = math.floor(startY)
+    local endX   = math.floor(endX)
+    local endY   = math.floor(endY)
+    local maxX   = nil
+    local minX   = math.min(startX, endX)
+    local maxY   = nil
+    local minY   = nil
+
+    local curColor = terminal.getBackgroundColor()
+    local color    = color or curColor
+
+    -- # Checking Defined Variables:
+    if Debugger.check then
+        Debugger.check(startX, "[startX]", "number")
+        Debugger.check(startY, "[startY]", "number")
+        Debugger.check(endX, "[endX]", "number")
+        Debugger.check(endY, "[endY]", "number")
+        Debugger.check(color, "[color]", "number")
+    end
+
+    -- # Code:
+    if startX == endX and startY == endY then
+        drawPixel(startX, startY, color, screen, overwrite)
+        return
+    end
+
+    if minX == startX then
+        minY = startY
+        maxX = endX
+        maxY = endY
+    else
+        minY = endY
+        maxX = startX
+        maxY = startY
+    end
+
+    for x = minX, maxX do
+        for y = minY, maxY do
+            drawPixel(x, y, color, screen, overwrite)
+        end
+    end
+end
+
+--[[
+# Function: 'compliment', Documentation:
+
+This function is used to get the complimentary
+color of the provided color. Caution: I am not 
+an artist, and I cannot provide aesthetic pleasure 
+to everyone. 
+
+> Parameters:
+<Parameter> | TYPE           | Information:
+------------+----------------+-------------
+<color>     | NUMBER         | The color to be complimented.
+------------+----------------+-------------
+
+> Returns:
+@return: <color>
+@info  : Returns the complimentary color of the provided color.
+
+<>
+]]
+
+function compliment(color)
+    -- # Declaring Local Variables:
+    local color = color or error("A color must be provided!", 2)
+
+    -- # Checking Local Variables:
+    if Debugger.check then
+        Debugger.check(color, "[color]", "number")
+    end
+
+    -- # Code:
+    if color == colors.white then
+        return colors.black
+    elseif color == colors.orange then
+        return colors.blue
+    elseif color == colors.magenta then
+        return colors.yellow
+    elseif color == colors.lightBlue then
+        return colors.orange
+    elseif color == colors.yellow then
+        return colors.purple
+    elseif color == colors.lime then
+        return colors.pink
+    elseif color == colors.pink then
+        return colors.lime
+    elseif color == colors.gray then
+        return colors.lightGray
+    elseif color == colors.lightGray then
+        return colors.gray
+    elseif color == colors.cyan then
+        return colors.orange
+    elseif color == colors.purple then
+        return colors.yellow
+    elseif color == colors.blue then
+        return colors.orange
+    elseif color == colors.brown then
+        return colors.green -- Lol, I don't know...
+    elseif color == colors.green then
+        return colors.red
+    elseif color == colors.red then
+        return colors.green
+    elseif color == colors.black then
+        return colors.white
+    end
+end
+
+--[[
+# Function: 'loadImage', Documentation:
+
+This function is used to load an image for proper
+storage. 
+
+> Parameters:
+<Parameter> | TYPE           | Information:
+------------+----------------+-------------
+<n/a>       | n/a            | Not yet implemented.
+------------+----------------+-------------
+
+> Returns:
+@return: <nil>
+@info  : Not yet implemented.
+
+<>
+]]
+
+local function loadImage()
+    -- <<< COMING SOON! >>>
+end
+
+--[[
+# Function: 'drawImage', Documentation:
+
+This function is used to draw an image from specified
+path for rendering. Special effects can also be
+defined by the user. 
+
+> Parameters:
+<Parameter> | TYPE           | Information:
+------------+----------------+-------------
+<n/a>       | n/a            | Not yet implemented.
+------------+----------------+-------------
+
+> Returns:
+@return: <nil>
+@info  : Not yet implemented.
+
+<>
+]]
+
+local function drawImage()
+    -- <<< COMING SOON! >>>
+end
+
+--[[
+# To-Do List:
+
+- Implement imaging logic into this library.
+Images will be created via Paint.Cloud9 (no pun intended),
+once that program is built.
+
+<>
+]]
+
+-- End of Document

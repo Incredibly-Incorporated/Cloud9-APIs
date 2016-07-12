@@ -1,0 +1,626 @@
+--[[
+# 'Environment' API Documentation:
+
+The Environment API is designed to provide an extra
+layer of logic to coroutines. Your environment will be
+returned as an object table, with internal functions defined 
+by the local 'functions' table of this API.
+
+Refer to function documentation for any general
+inquiries. 
+<>
+]]
+
+--[[ENVIRONMENT VARIABLES]]--
+VERSION = "3.0.4"
+
+--[[LOCAL VARIABLES ZONE:]]--
+local functions = {}
+
+--[[
+# Function: 'add', Documentation:
+
+This function is used to add a task to the defined
+environment.
+
+> Parameters:
+<Parameter>   | TYPE           | Information:
+--------------+----------------+-------------
+<environment> | TABLE OBJECT   | Your environment object.
+<name>        | STRING         | The 'string' name of your task for lookup.
+<instruction> | FUNCTION       | The instruction to run. Ensure you pass <func_name>
+              |                | as an argument, and not <func_name>().
+<...>         | ANY            | Any arguments to be passed to your instructions.
+--------------+----------------+-------------
+
+> Returns:
+@return: <nil>
+
+<>
+]]
+
+functions.add = function(environment, name, instruction, ...)
+    -- # Checking Environment:
+    if type(environment) ~= "table" or not environment.isEnvironment then error("[environment] was not defined!", 2) end
+
+    -- # Declaring Local Variables:
+    local arguments, copy = false, {}
+
+    -- # Checking Local Variables:
+    if Debugger.check then
+        Debugger.check(name, "[name]", "string")
+        Debugger.check(instruction, "[instruction]", "function")
+    else
+        if type(name) ~= "string" then
+            error("[name] must be type: 'string'!", 2)
+        end
+        if type(instruction) ~= "function" then
+            error("[instruction] must be type: 'function'!", 2)
+        end
+    end
+
+    -- # Check to Ensure Task Name isn't Already in Queue:
+    local running, count = true, 0
+    while running do
+        count = count + 1
+        if not next(environment["tasks"]) then break end
+        for index, compare in pairs(environment["tasks"]) do
+            if name == compare then
+                name, running = name.."_"..count, true
+                break
+            end
+            running = false
+        end
+    end
+
+    -- # Code:
+    if #arg > 0 then
+        arguments = {table.unpack(arg)}
+        
+        for i = 1, #arg do
+            copy[i] = arg[i]
+        end
+    end
+
+    environment.tasks[name] = {
+        ["instruction"] = instruction,
+        ["arguments"] = arguments,
+        ["proxy"] = arguments,
+        ["routine"] = coroutine.create(instruction),
+        ["paused"] = false,
+        ["skip"] = false,
+        ["kill"] = false,
+        ["passed"] = copy
+    }
+end
+
+--[[
+# Function: 'remove', Documentation:
+
+This function is used to remove a task from the 
+defined environment.
+
+> Parameters:
+<Parameter>   | TYPE           | Information:
+--------------+----------------+-------------
+<environment> | TABLE OBJECT   | Your environment object.
+<name>        | STRING         | The 'string' name of your task for lookup.
+--------------+----------------+-------------
+
+> Returns:
+@return: <nil>
+
+<>
+]]
+
+functions.remove = function(environment, name)
+    -- # Checking Environment:
+    if type(environment) ~= "table" or not environment.isEnvironment then error("[environment] was not defined!", 2) end
+    
+    -- # Checking Local Variables:
+    if Debugger.check then
+        Debugger.check(name, "[name]", "string")
+    else
+        if not name then
+            error("[name] must be type: 'string', got; "..type(name), 2)
+        end
+    end
+
+    -- # Code:
+    environment.tasks[name]["kill"] = true
+end
+
+--[[
+# Function: 'pause', Documentation:
+
+This function is used to pause a task in the 
+defined environment.
+
+> Parameters:
+<Parameter>   | TYPE           | Information:
+--------------+----------------+-------------
+<environment> | TABLE OBJECT   | Your environment object.
+<name>        | STRING         | The 'string' name of your task for lookup.
+--------------+----------------+-------------
+
+> Returns:
+@return: <nil>
+
+<>
+]]
+
+functions.pause = function(environment, name)
+    -- # Checking Environment:
+    if type(environment) ~= "table" or not environment.isEnvironment then error("[environment] was not defined!", 2) end
+
+    -- # Checking Local Variables:
+    if Debugger.check then
+        Debugger.check(name, "[name]", "string")
+    else
+        if not name then
+            error("[name] must be type: 'string', got; "..type(name), 2)
+        end
+    end
+
+    -- # Code:
+    environment.tasks[name]["paused"] = true
+end
+
+--[[
+# Function: 'resume', Documentation:
+
+This function is used to resume a task in the 
+defined environment.
+
+> Parameters:
+<Parameter>   | TYPE           | Information:
+--------------+----------------+-------------
+<environment> | TABLE OBJECT   | Your environment object.
+<name>        | STRING         | The 'string' name of your task for lookup.
+--------------+----------------+-------------
+
+> Returns:
+@return: <nil>
+
+<>
+]]
+
+functions.resume = function(environment, name)
+    -- # Checking Environment:
+    if type(environment) ~= "table" or not environment.isEnvironment then error("[environment] was not defined!", 2) end
+
+    -- # Checking Local Variables:
+    if Debugger.check then
+        Debugger.check(name, "[name]", "string")
+    else
+        if not name then
+            error("[name] must be type: 'string', got; "..type(name), 2)
+        end
+    end
+
+    -- # Code:
+    environment.tasks[name]["paused"] = false
+    environment.tasks[name]["skip"] = false
+end
+
+--[[
+# Function: 'status', Documentation:
+
+This function is used to retrieve the status of a 
+task in the defined environment.
+
+> Parameters:
+<Parameter>   | TYPE           | Information:
+--------------+----------------+-------------
+<environment> | TABLE OBJECT   | Your environment object.
+<name>        | STRING         | The 'string' name of your task for lookup.
+--------------+----------------+-------------
+
+> Returns:
+@return: <status>; 'string'
+@info  : Returns the status of the coroutine of the
+given task. Refer to the Lua manual for the returns
+of 'coroutine.status'.
+
+<>
+]]
+
+functions.status = function(environment, name)
+    -- # Checking Environment:
+    if type(environment) ~= "table" or not environment.isEnvironment then error("[environment] was not defined!", 2) end
+
+    -- # Checking Local Variables:
+    if Debugger.check then
+        Debugger.check(name, "[name]", "string")
+    else
+        if not name then
+            error("[name] must be type: 'string', got; "..type(name), 2)
+        end
+    end
+
+    -- # Code:
+    return coroutine.status(environment.tasks[name]["routine"])
+end
+
+--[[
+# Function: 'check', Documentation:
+
+This function is used to check to see if a task in
+the defined environment is currently paused.
+
+> Parameters:
+<Parameter>   | TYPE           | Information:
+--------------+----------------+-------------
+<environment> | TABLE OBJECT   | Your environment object.
+<name>        | STRING         | The 'string' name of your task for lookup.
+--------------+----------------+-------------
+
+> Returns:
+@return: <boolean>
+@info  : Returns true if paused; false otherwise.
+
+<>
+]]
+
+functions.check = function(environment, name)
+    -- # Checking Environment:
+    if type(environment) ~= "table" or not environment.isEnvironment then error("[environment] was not defined!", 2) end
+
+    -- # Declaring Local Variables:
+    local name = name or nil
+
+    -- # Checking Local Variables:
+    if Debugger.check then
+        Debugger.check(name, "[name]", "string")
+    else
+        if not name then
+            error("[name] must be type: 'string', got; "..type(name), 2)
+        end
+    end
+
+    -- # Code:
+    if environment.tasks[name]["paused"] then
+        return true
+    else
+        return false
+    end
+end
+
+--[[
+# Function: 'current', Documentation:
+
+This function is used to return the currently
+running task, or coroutine, in the environment.
+
+> Parameters:
+<Parameter>   | TYPE           | Information:
+--------------+----------------+-------------
+<environment> | TABLE OBJECT   | Your environment object.
+--------------+----------------+-------------
+
+> Returns:
+@return: <coroutine>
+@info  : Returns the currently running coroutine.
+
+<>
+]]
+
+functions.current = function(environment)
+    -- # Checking Environment:
+    if type(environment) ~= "table" or not environment.isEnvironment then error("[environment] was not defined!", 2) end
+
+    -- # Declaring Local Variables:
+    local current = coroutine.running()
+
+    for name in pairs(environment.tasks) do
+        if environment.tasks[name]["routine"] == current then
+            current = name
+            break
+        end
+    end
+
+    -- # Code:
+    return tostring(current)
+end
+
+--[[
+# Function: 'start', Documentation:
+
+This function is used to start the environment.
+Think of this as putting the key into the
+ignition of a car.
+
+> Parameters:
+<Parameter>   | TYPE           | Information:
+--------------+----------------+-------------
+<environment> | TABLE OBJECT   | Your environment object.
+--------------+----------------+-------------
+
+> Returns:
+@return: <status>
+@info  : Will return a 'string' if the environment
+is already running.
+
+<>
+]]
+
+functions.start = function(environment)
+    -- # Checking Environment:
+    if type(environment) ~= "table" or not environment.isEnvironment then error("[environment] was not defined!", 2) end
+
+    -- # Code:
+    if not environment.running then
+        environment.running = true
+    else
+        return print("environment is already running!")
+    end
+end
+
+--[[
+# Function: 'stop', Documentation:
+
+This function is used to stop the environment.
+Think of this as removing the key from the ignition.
+
+> Parameters:
+<Parameter>   | TYPE           | Information:
+--------------+----------------+-------------
+<environment> | TABLE OBJECT   | Your environment object.
+--------------+----------------+-------------
+
+> Returns:
+@return: <status>
+@info  : Will return a 'string' if the environment
+has already stopped running.
+
+<>
+]]
+
+functions.stop = function(environment)
+    -- # Checking Environment:
+    if type(environment) ~= "table" or not environment.isEnvironment then error("[environment] was not defined!", 2) end
+
+    -- # Code:
+    if environment.running then
+        environment.running = false
+    else
+        return print("environment has already been stopped!")
+    end
+end
+
+--[[
+# Function: 'run', Documentation:
+
+This function is used to officially start the environment.
+Think of this as after putting the key into the ignition,
+you need to turn the key in order to start the car.
+
+> Parameters:
+<Parameter>   | TYPE           | Information:
+--------------+----------------+-------------
+<environment> | TABLE OBJECT   | Your environment object.
+--------------+----------------+-------------
+
+> Returns:
+@return: <nil>
+
+<>
+]]
+
+functions.run = function(environment)
+    -- # Checking Environment:
+    if type(environment) ~= "table" or not environment.isEnvironment then error("[environment] was not defined!", 2) end
+
+    -- # Declaring Local Variables:
+    local event, kill = {}, {}
+    local routine, args, ok, yielded = nil, nil, nil, nil
+
+    -- # Code:
+    if not environment.running then
+        environment.running = true
+    end
+
+    while environment.running do
+        -- # Run All Tasks in Environment:
+        for name in pairs(environment.tasks) do
+            -- # Local Wrap for Easier Reading:
+            routine = environment.tasks[name]
+
+            -- # Resume Task w/ Appropriate Arguments Dependent on Resume Needs:
+            if not routine["arguments"] then
+                -- # If no Arguments or Body Function Yielded & Needs an Event:
+                args = event
+            else
+                -- # If Arguments & Body Function Needs Arguments on First Resume:
+                args = routine["arguments"]
+            end
+
+            if coroutine.status(routine["routine"]) ~= "dead" and not routine["skip"] then
+                ok, yielded = coroutine.resume(routine["routine"], table.unpack(args))
+                
+                if not ok then
+                    term.redirect(term.native())
+                    term.setTextColor(colors.white) term.setBackgroundColor(colors.black)
+                    term.setCursorPos(1, 1) term.clear()
+                    printError(yielded)
+        
+                    local _, h = term.getSize()
+                    term.setCursorPos(1, h)
+                    
+                    environment.errored = true
+                    environment.running = false
+
+                    -- # Trace Instruction That Crashed:
+                    routine.errored = "This task has crashed: ["..yielded.."]"
+                    break
+                end
+
+                -- # Empty Arguments After Being Passed to Routine Function:
+                routine["arguments"] = false
+            elseif coroutine.status(routine["routine"]) == "dead" then
+                -- # Check for Pause Protocol:
+                if routine["paused"] then
+                    routine["skip"] = true
+                end
+
+                -- # Check if a Task Needs Killed:
+                if routine["kill"] then
+                    kill[#kill + 1] = name
+                end
+
+                -- # Copy Proxy to Arguments When Routine is Dead:
+                routine["arguments"] = routine["proxy"]
+
+                -- # Recreate Thread Once Dead:
+                routine["routine"] = coroutine.create(routine["instruction"])
+            end
+        end
+
+        -- # Apply Kills if Applicable:
+        if #kill > 0 then
+            for i = 1, #kill do
+                environment.tasks[kill[i]] = nil
+            end
+            kill = {}
+        end 
+
+        -- # Kill Environment if Applicable:
+        if environment.running == false then
+            if environment.errored then
+                environment:debug()
+                return
+            else
+                return
+            end
+        end
+
+        event = {os.pullEventRaw()}
+    end
+end
+
+--[[
+# Function: 'debug', Documentation:
+
+This function is used to debug an environment.
+
+> Parameters:
+<Parameter>   | TYPE           | Information:
+--------------+----------------+-------------
+<environment> | TABLE OBJECT   | Your environment object.
+<file>        | STRING         | Directory path of your file.
+--------------+----------------+-------------
+
+> Returns:
+@return: <nil>
+
+<>
+]]
+
+functions.debug = function(environment, file)
+    -- # Checking Environment:
+    if type(environment) ~= "table" or not environment.isEnvironment then error("[environment] was not defined!", 2) end
+
+    -- # Declaring Local Variables:
+    local ID, ext = "Environment <"..tostring(environment)..">:", nil
+
+    -- # Checking Local Variables:
+    if not file and C9 then 
+        file = C9.ENV_LOG 
+    elseif file and not fs.exists(file) then
+        error("['file'] does not exist!", 2)
+    else
+        file = "environment_crash"
+        if not fs.exists(file) then
+            local temp = fs.open(file, "w")
+            temp.close()
+        end
+    end
+
+    -- # Code:
+    Debugger.log(file, "w", environment, ID, "tasks")
+
+    if string.find(file, "%.") then
+        ext  = string.match(file, "%..+")
+        file = string.gsub(file, "%..+", "")
+    else
+        ext = ""
+    end
+
+    if not fs.exists(file..".tasks"..ext) then
+        local temp = fs.open(file..".tasks"..ext, "w")
+        temp.close()
+    end
+
+    Debugger.log(file..".tasks"..ext, "w", "Environment Variables @: "..file..ext, string.char(34).."Environment Tasks @: "..file..".tasks"..ext..string.char(34))
+    for k, v in pairs(environment.tasks) do
+        Debugger.log(file..".tasks"..ext, "a", v, ID.." Task: "..string.char(34)..tostring(k)..string.char(34), "proxy", "arguments")
+    end
+end
+
+--[[END LOCAL FUNCTIONS ZONE]]--
+
+--[[
+# Function: 'new', Documentation:
+
+This function is used to create a new environment.
+With this environment you can create, remove, pause,
+resume, and check tasks in a multi-tasking environment.
+
+Additionally, you are also given complete control over
+your environment, such as; starting, stopping, and running
+the defined environment. There are also many other goodies to
+help assist you in task management. 
+
+> Parameters:
+None Required.
+
+> Returns:
+@return: <environment>
+@info  : Returns your environment as an object table.
+
+> Notes:
+Remember to assign your table objects to a variable
+when calling these 'new' constructor functions.
+
+<>
+]]
+
+function new()
+    -- # Declaring Local Variables:
+    local ID_1, ID_2 = tostring({}), tostring({})
+
+    -- # Declaring Local Environment Table:
+    local environment = {
+        ["ID"] = string.upper(ID_2),
+        ["tasks"] = {},
+        ["running"] = false,
+        ["isEnvironment"] = true
+    }
+
+    -- # Code:
+    for func, instruction in pairs(functions) do
+        environment[func] = instruction
+    end
+
+    -- # Add Tick Updater Task to Environment:
+    local pause = tostring({})
+    local function tick()
+        os.queueEvent(pause)
+    end
+
+    environment.tasks["TICK_UPDATE_"..string.upper(ID_1)] = {
+        ["instruction"] = tick,
+        ["arguments"] = false,
+        ["proxy"] = false,
+        ["routine"] = coroutine.create(tick),
+        ["paused"] = false,
+        ["skip"] = false,
+        ["kill"] = false,
+        ["passed"] = "CANNOT_PASS_ARGUMENTS_TO_TICK_UPDATER"
+    }
+
+    -- # Return Environment to User:
+    return environment
+end
+
+-- End of Document

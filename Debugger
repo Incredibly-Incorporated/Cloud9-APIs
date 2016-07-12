@@ -1,0 +1,252 @@
+--[[
+# 'Debugger' API Documentation:
+
+The Debugger API is designed to handle all your
+debugging needs! 
+
+> Features:
+- > Variable identification & type matching.
+- > Variable logging.
+- > Variable watching (WIP).
+- > Break pointing (WIP).
+
+Refer to function documentation for any general
+inquiries. 
+<>
+]]
+
+--[[ENVIRONMENT VARIABLES]]--
+VERSION = "0.1.9"
+
+--[[
+# Function: 'check', Documentation:
+
+This function is used to check variable types. If
+the variable does match the type provided, then the
+function will return an error pointing to the calling
+function. 
+
+> Parameters:
+<Parameter> | TYPE   | Information:
+------------+--------+-------------
+<variable>  | ANY    | The variable to check. 
+<name>      | STRING | The name of your variable.
+<...>       | ANY    | What to compare to.
+------------+--------+-------------
+
+> Returns:
+@return: 'true', or 'error'
+@info  : The function will return 'true' if the
+         variable matches the provided types, false
+         otherwise. An error will be pushed at level 2.
+<>
+]]
+
+function check(variable, name, ...)
+    -- # Code:
+    for i = 1, #arg do
+        if arg[i] == variable then
+            return true
+        end
+
+        if arg[i] == type(variable) then
+            return true
+        end
+    end
+
+    -- # Declaring Local Variables:
+    local response = "<"..tostring(name).."> does not match type; '"
+
+    if #arg == 1 then
+        response = response..arg[1].."', got <"..tostring(variable)..">, as type; '"..type(variable).."'"
+    elseif #arg == 2 then
+        response = response..arg[1].."', or '"..arg[2].."', got <"..tostring(variable)..">, as type; '"..type(variable).."'"
+    elseif #arg > 2 then
+        response = response..arg[1].."', or '"
+        for i = 2, #arg do
+            response = response..arg[i].."', or '"
+            if i == #arg then
+                response = response..arg[i].."', got <"..tostring(variable)..">, as type; '"..type(variable).."'"
+            end
+        end
+    end
+
+    return error(response, 2)
+end
+
+--[[
+# Function: 'log', Documentation:
+
+This function is used to log variables to a file.
+If the file does not exist, an error will be returned
+stating that the argument provided is invalid.
+
+> Parameters:
+<Parameter> | TYPE          | Information:
+------------+---------------+-------------
+<file>      | STRING        | The path of your file provided as a string.
+<data>      | ANY           | The data you wish to write.
+<mode>      | STRING        | The mode you want your file to be open in.
+            |               | Refer to the fs.open documentation in the CC Wiki for 
+            |               | more information.
+<ID>        | STRING        | An identifier for your data if your file
+            |               | is large and you need to search for a particular ID.
+<...>       | STRING/NUMBER | Add the index(es) to ignore when logging a table.
+------------+---------------+-------------
+
+> Returns:
+@return: 'boolean'
+@info  : The function will return 'true' if it
+         executed successfully, false otherwise.
+
+> Notes:
+The <ID> parameter is not required if you are not including 
+indexes to be ignored; however, if not included, it will be 
+defaulted to the tostring value of the provided data if not 
+given an argument.
+<>
+]]
+
+-- > Following locals from textutils API by dan200, with adaptions by Incredibly Incorporated.
+local g_tLuaKeywords = {
+    ["and"] = true,
+    ["break"] = true,
+    ["do"] = true,
+    ["else"] = true,
+    ["elseif"] = true,
+    ["end"] = true,
+    ["false"] = true,
+    ["for"] = true,
+    ["function"] = true,
+    ["if"] = true,
+    ["in"] = true,
+    ["local"] = true,
+    ["nil"] = true,
+    ["not"] = true,
+    ["or"] = true,
+    ["repeat"] = true,
+    ["return"] = true,
+    ["then"] = true,
+    ["true"] = true,
+    ["until"] = true,
+    ["while"] = true,
+}
+
+local function serializeImpl(t, tTracking, sIndent)
+    local sType = type(t)
+    if sType == "table" then
+        if tTracking[t] ~= nil then
+            error("Cannot serialize table with recursive entries", 2)
+        end
+        tTracking[t] = true
+
+        if next(t) == nil then
+            -- Empty tables are simple
+            return "{}"
+        else
+            -- Other tables take more work
+            local sResult = "{\n"
+            local sSubIndent = sIndent.."  "
+            local tSeen = {}
+            for k, v in ipairs(t) do
+                tSeen[k] = true
+                sResult = sResult..sSubIndent..serializeImpl(v, tTracking, sSubIndent)..",\n"
+            end
+            for k, v in pairs(t) do
+                if not tSeen[k] then
+                    local sEntry
+                    if type(k) == "string" and not g_tLuaKeywords[k] and string.match(k, "^[%a_][%a%d_]*$") then
+                        sEntry = k.." = "..serializeImpl(v, tTracking, sSubIndent)..",\n"
+                    else
+                        sEntry = "[ "..serializeImpl(k, tTracking, sSubIndent).." ] = "..serializeImpl(v, tTracking, sSubIndent)..",\n"
+                    end
+                    sResult = sResult..sSubIndent..sEntry
+                end
+            end
+            sResult = sResult..sIndent.."}"
+            return sResult
+        end
+    elseif sType == "string" then
+        return string.format("%q", t)
+    elseif sType == "number" or sType == "boolean" or sType == "nil" or sType == "function" or sType == "thread" then
+        return tostring(t)
+    else
+        error("Cannot serialize type "..sType, 2)
+    end
+end
+
+-- > Following Function by Incredibly Incorporated, documentation above previous locals applies to the following:
+function log(file, mode, data, ID, ...)
+    -- # Declaring Missing Local Variables:
+    if not ID then ID = tostring(data) end
+
+    -- # Check Variables & Types:
+    check(file, "file", "string")
+    check(mode, "mode", "w", "a")
+
+    -- # Code:
+    if not fs.exists(file) then
+        error("['file'] does not exist, got; "..file, 2)
+    end
+    
+    file = fs.open(file, mode)
+    file.writeLine("<> New Entry on Day: "..os.day().." <> Time: "..textutils.formatTime(os.time(), false))
+    file.writeLine("<>")
+
+    if type(data) ~= "table" then
+        local abbrev = ""
+        if type(data) == "string" then
+            abbrev = string.char(34)..tostring(data)..string.char(34)
+        else
+            abbrev = tostring(data)
+        end
+
+        file.writeLine("<> Variable: "..ID)
+        file.writeLine("<> Value   : "..abbrev)
+        file.writeLine("<> Type    : <"..type(data)..">")
+        file.writeLine("<> <><><>")
+    elseif type(data) == "table" then
+        file.writeLine("<> Table: "..ID)
+        file.writeLine("<> <><><>")
+
+        local value, vType, key, kType, skip = nil, nil, nil, nil, false
+        for k, v in pairs(data) do
+            for i = 1, #arg do 
+                if tostring(arg[i]) == tostring(k) then
+                    skip = true
+                    break
+                end
+            end
+
+            if skip then
+                skip = false
+            else
+                vType = type(v)
+                kType = type(k)
+
+                if vType == "string" then
+                    value = string.char(34)..tostring(v)..string.char(34)
+                elseif vType == "table" then
+                    value = serializeImpl(v, {}, "<> ")
+                else
+                    value = tostring(v)
+                end
+    
+                if kType == "string" then
+                    key = string.char(34)..k..string.char(34)
+                elseif kType == "number" then
+                    key = tostring(k)
+                end
+
+                file.writeLine("<> Key  : ["..key.."]")
+                file.writeLine("<> Value: "..value)
+                file.writeLine("<> Type : <"..vType..">")
+                file.writeLine("<> <><><>")
+            end
+        end
+    end
+
+    file.close()
+end
+
+-- End of Document
