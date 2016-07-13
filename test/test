@@ -66,6 +66,16 @@ local button_run = Button.new({
     ["screen"] = top_bar
 })
 
+local button_debug = Button.new({
+    ["text"] = "[Debug]",
+    ["xPos"] = 20,
+    ["yPos"] = 1,
+    ["foregrond"] = colors.white,
+    ["background"] = colors.blue,
+    ["tFlash"] = colors.red,
+    ["screen"] = top_bar
+})
+
 -- $ Local Program Windows:
 local calc_window, calc_screen = Window.new({
     ["name"] = "Calculator",
@@ -96,13 +106,14 @@ local function calculator()
 end
 
 -- $ Local Startup Script:
-term:setBackgroundColor(colors.purple)
+term:setBackgroundColor(colors.lightBlue)
 term:clear()
 term.clear(top_bar)
 term.clear(bottom_bar)
 button_close:display()
 button_calculator:display()
 button_run:display()
+button_debug:display()
 
 -- $ Program Modules:
 --[[
@@ -128,6 +139,11 @@ local function MODULE_CALCULATOR()
             end
         elseif button_run:call(event, p2, p3) then
             calc_window:run(calculator)
+        elseif button_debug:call(event, p2, p3) then
+            term.debug(bottom_bar, "debugging/bottom_bar_debug/bottom_debug")
+            term.debug(calc_screen, "debugging/calc_screen_debug/calc_debug")
+            term:debug("debugging/term_debug/term_debug")
+            term.debug(top_bar, "debugging/top_bar_debug/top_debug")
         elseif calc_window:move(event, p2, p3) then
             -- Skip
         end
@@ -173,7 +189,7 @@ function MODULE_TERMINATION()
         end
 
         if e1 == "key" and e2 == keys.enter then
-            calc_window:debug()
+
         end
 
         if button_close:call(e1, e3, e4) then

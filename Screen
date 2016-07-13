@@ -659,11 +659,10 @@ functions.write = function(screen, text, override, transparent)
     local xPos, yPos          = screen.curX - 1, screen.curY
     local stc, sbc, scp, spit = screen.display.setTextColor, screen.display.setBackgroundColor, screen.display.setCursorPos, screen.display.write
 
-    -- $ Implement Screen Visibility Checking Here...
-
     -- # Checking Local Variables:
     if override == "override" then override = true end
     if transparent == "transparent" then transparent = true end
+    if screen.transparent then transparent = true end
     if type(override) ~= "boolean" then override = false end
     if type(transparent) ~= "boolean" then transparent = false end
     if type(pixel) ~= "table" or not pixel["xPos"] and not pixel["yPos"] then
@@ -729,13 +728,13 @@ functions.write = function(screen, text, override, transparent)
                 sPixel["background"] = screen.background
                 sPixel["text"] = letter
             else
-                if letter == " " then
+                if letter == " " and screen.isVisible then
                     sbc(tPixel["background"])
                     stc(tPixel["foreground"]) 
                     scp(tPixel["xPos"], tPixel["yPos"])
                     spit(tPixel["text"])
                 else
-                    scp(sPixel["xPos"], sPixel["yPos"])
+                    scp(tPixel["xPos"], tPixel["yPos"])
                     spit(letter)   
                 end
             end
@@ -766,9 +765,14 @@ functions.write = function(screen, text, override, transparent)
                 end
             end
         else
-            if letter == " " and sPixel["text"] ~= " " or letter ~= " " and sPixel["text"] == " " then --or sPixel["text"] ~= " " and letter == " " then
-                scp(sPixel["xPos"], sPixel["yPos"])
-                spit(letter)
+            if letter == " " and screen.isVisible then
+                sbc(tPixel["background"])
+                stc(tPixel["foreground"]) 
+                scp(tPixel["xPos"], tPixel["yPos"])
+                spit(tPixel["text"])
+            else
+                scp(tPixel["xPos"], tPixel["yPos"])
+                spit(letter)   
             end
         end
 
@@ -827,7 +831,7 @@ functions.blit = function(screen, text, tCols, bCols, override, transparent)
 
     if not transparent then
         transparent = false
-    elseif transparent == "transparent" then
+    elseif transparent == "transparent" or screen.transparent then
         transparent = true
     end
 
@@ -2061,38 +2065,48 @@ functions.refresh = function(screen, all)
     if not all then
         for y = 1, #screen.pixels do
             for x = 1, #screen.pixels[y] do
-                spit(screen.pixels[y][x])
+                spit(screen.pixels[y][x], false, false)
             end
         end
     else
         if screen.isParent then
+            -- # Refresh Screens:
             if #screen.children > 0 then
                 for i = 1, #screen.children do
-                    for y = 1, #screen.children[i].pixels do
-                        for x = 1, #screen.children[i].pixels[y] do
-                            spit(screen.children[i].pixels[y][x])
+                    if screen.children[i].isVisible then
+                        for y = 1, #screen.children[i].pixels do
+                            for x = 1, #screen.children[i].pixels[y] do
+                                spit(screen.children[i].pixels[y][x], false, false)
+                            end
                         end
                     end
                 end
             end
-            for y = 1, #screen.pixels do
-                for x = 1, #screen.pixels[y] do
-                    spit(screen.pixels[y][x])
+            if screen.isVisible then
+                for y = 1, #screen.pixels do
+                    for x = 1, #screen.pixels[y] do
+                        spit(screen.pixels[y][x], false, false)
+                    end
                 end
             end
         else
+            -- # Update Screens:
             if #screen.parent.children > 0 then
                 for i = 1, #screen.parent.children do
-                    for y = 1, #screen.parent.children[i].pixels do
-                        for x = 1, #screen.parent.children[i].pixels[y] do
-                            spit(screen.parent.children[i].pixels[y][x])
+                    if screen.parent.children[i].isVisible then
+                        for y = 1, #screen.parent.children[i].pixels do
+                            for x = 1, #screen.parent.children[i].pixels[y] do
+                                spit(screen.parent.children[i].pixels[y][x], false, false)
+                            end
                         end
                     end
                 end
             end
-            for y = 1, #screen.parent.pixels do
-                for x = 1, #screen.parent.pixels[y] do
-                    spit(screen.parent.pixels[y][x])
+            if screen.parent.isVisible then
+                for y = 1, #screen.parent.pixels do
+                    for x = 1, #screen.parent.pixels[y] do
+                        spit(screen.parent.pixels[y][x], false, false)
+                    end
                 end
             end
         end
@@ -2242,7 +2256,7 @@ functions.debug = function(screen, file)
         file = C9.TERM_LOG 
     elseif file and not fs.exists(file) then
         error("['file'] does not exist!", 2)
-    else
+    elseif not file then
         file = "screen_debug"
         if not fs.exists(file) then
             local temp = fs.open(file, "w")

@@ -172,9 +172,6 @@ functions.move = function(window, e1, e3, e4, comparator)
         end
     end
     if e1 == "mouse_click" and window.buttons.titlebar:check(e3, e4) and not window.titlebar.clicked then 
-        -- # Update Graphical Elements:
-        window.buttons.titlebar:display(true)
-        
         -- # Update Variable Trackers in Window:
         window.titlebar.clicked = true
         window.clickedX, window.clickedY = e3, e4
@@ -196,13 +193,9 @@ functions.move = function(window, e1, e3, e4, comparator)
         end
         window.display_move_box()
     elseif e1 == "mouse_up" and window.titlebar.clicked then
-        -- # Update Graphical Elements:
-        window.buttons.titlebar:display(false)
-        window.titlebar.clicked = false
-        move_window.clear(false, true)
-
         -- # Update Visibility Rules:
         move_window.visible(false)
+        window.titlebar.clicked = false
 
         -- # Update Screen Positions:
         window_screen.resize(window.move_box.startX, window.move_box.startY, window.width, window.height, window.win_screen.level)
