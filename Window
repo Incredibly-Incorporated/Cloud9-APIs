@@ -41,70 +41,46 @@ functions.display = function(window, visible)
     if type(window) ~= "table" or not window.isWindow then error("['window'] was not defined!", 2) end
 
     -- # Declaring Screen Wrap:
-    local content = window.content.screen:hook()
-    local screen = window.screen:hook()
+    local content = window.content.content_screen:hook()
+    local win_screen = window.win_screen:hook()
 
     -- # Code:
     -- > Make Window Screens Visible:
     window.visible = visible
     content.visible(visible)
-    screen.visible(visible)
-    screen.refresh(true)
+    win_screen.visible(visible)
 
     -- > Draw Main Window Body:
-    Craft.drawFilledBox(
-        1, 
-        1, 
-        window.width, 
-        window.height, 
-        window.body.background, 
-        window.screen
-    )
-
-    -- > Draw Titlebar w/ Information:
-    Craft.drawLine(
-        1, 
-        1, 
-        window.width, 
-        1, 
-        window.titlebar.background, 
-        window.screen
-    )
-
-    screen.setCursorPos(window.titlebar.text_xPos, window.titlebar.text_yPos)
-    screen.setBackgroundColor(window.titlebar.background)
-    screen.setTextColor(window.titlebar.foreground)
-    screen.write(window.titlebar.name)
-
-    -- # Drawing Window Interfaces:
-    -- > Window Minimize Interface:
-    screen.setTextColor(window.titlebar.minimize.foreground)
-    screen.setBackgroundColor(window.titlebar.minimize.background)
-    screen.setCursorPos(window.titlebar.minimize.xPos, window.titlebar.minimize.yPos)
-    screen.write(window.titlebar.minimize.text)
-
-    -- > Window Maximize Interface:
-    screen.setTextColor(window.titlebar.maximize.foreground)
-    screen.setBackgroundColor(window.titlebar.maximize.background)
-    screen.setCursorPos(window.titlebar.maximize.xPos, window.titlebar.maximize.yPos)
-    screen.write(window.titlebar.maximize.text)
-
-    -- > Window Close Interface:
-    screen.setTextColor(window.titlebar.close.foreground)
-    screen.setBackgroundColor(window.titlebar.close.background)
-    screen.setCursorPos(window.titlebar.close.xPos, window.titlebar.close.yPos)
-    screen.write(window.titlebar.close.text)
-
-    -- > Window Resizer Interface:
-    screen.setTextColor(Craft.compliment(window.body.background))
-    screen.setBackgroundColor(window.body.background)
-    screen.setCursorPos(window.width, window.height)
-    screen.write(window.body.resizer.text)
+    win_screen.setBackgroundColor(window.body.background)
+    win_screen.clear()
 
     -- # Displaying Window Buttons:
-    for i = 1, #window.buttons do
-        window.buttons[i]:display()
+    if window.can_move then
+        window.buttons.titlebar:display()
     end
+    if window.can_minimize then
+        window.buttons.minimize:display()
+    end
+    if window.can_maximize then
+        window.buttons.maximize:display()
+    end
+    if window.can_close then
+        window.buttons.close:display()
+    end
+    if window.can_resize then
+        window.buttons.resize:display()
+    end
+
+    -- # Update Button Refreshes:
+    win_screen.refresh(true)
+
+    -- $ Last Dev Here: Figure out why the screen doesn't refresh properly upon window move...
+
+    -- # Draw Titlebar Information
+    win_screen.setCursorPos(window.titlebar.text_xPos, window.titlebar.text_yPos)
+    win_screen.setBackgroundColor(window.titlebar.background)
+    win_screen.setTextColor(window.titlebar.foreground)
+    win_screen.write(window.titlebar.name)
 end
 
 --[[
@@ -182,62 +158,61 @@ functions.move = function(window, e1, e3, e4, comparator)
         return false
     end
 
-    local clicked = false
-    local move_window, window_screen = window.move_window:hook(), window.screen:hook() 
+    local move_window, window_screen = window.move_window:hook(), window.win_screen:hook() 
 
     -- # Local Move Box & Function:
     move_window.visible(true)
-    local move_box = {
-        ["startX"] = window.startX,
-        ["startY"] = window.startY,
-        ["endX"] = window.endX,
-        ["endY"] = window.endY
-    }
-
-    local function display_move_box()
-        local pX, pY = 0, 0
-        move_window.clear()
-        for x = move_box.startX, move_box.endX do
-            for y = move_box.startY, move_box.endY do
-                pX, pY = move_window.revert(x, y)
-                move_window.setCursorPos(x, y)
-                move_window.setTextColor(Craft.compliment(window.move_window.parent.terminal[pY][pX]["background"]))
-                move_window.write(string.char(127), false, true)
-            end
-        end
-    end
 
     -- # Code:
-    local clickedX, clickedY = nil, nil
     if comparator then
         if not comparator() then
             if e1 == "mouse_up" then
-                local startX, startY = move_window.revert(move_box.startX, move_box.startY)
-                local endX, endY = move_window.revert(move_box.endX, move_box.endY)
-
-                move_window.clear()
-                window_screen.resize(startX, startY, endX, endY, window.screen.level)
-                window:display(true)
+                -- $ Update Mouse Up Events Here...
             end
         end
     end
-    if window.buttons.titlebar:call(e1, e3, e4) then 
-        clicked = true
-        clickedX, clickedY = e3, e4
-        display_move_box()
-    end
-    if e1 == "mouse_drag" and clicked then
-        move_box.startX = clickedX - e3
-        move_box.startY = clickedY - e4
-        move_box.endX = move_box.endX + (clickedX - e3)
-        move_box.endY = move_box.endY + (clickedY - e4)
-        display_move_box()
-    elseif e1 == "mouse_up" and clicked then
-        local startX, startY = move_window.revert(move_box.startX, move_box.startY)
-        local endX, endY = move_window.revert(move_box.endX, move_box.endY)
+    if e1 == "mouse_click" and window.buttons.titlebar:check(e3, e4) and not window.titlebar.clicked then 
+        -- # Update Graphical Elements:
+        window.buttons.titlebar:display(true)
+        
+        -- # Update Variable Trackers in Window:
+        window.titlebar.clicked = true
+        window.clickedX, window.clickedY = e3, e4
 
-        move_window.clear()
-        window_screen.resize(startX, startY, endX, endY, window.screen.level)
+        -- # Update Move Box Variables & Display Changes:
+        window.move_box.startX = window.startX
+        window.move_box.startY = window.startY
+        window.move_box.endX = window.endX
+        window.move_box.endY = window.endY
+        window.display_move_box()
+    elseif e1 == "mouse_drag" and window.titlebar.clicked then
+        if e3 - window.clickedX + window.width <= window.move_window.endX and e3 - window.clickedX + 1 >= window.move_window.startX then
+            window.move_box.startX = e3 - window.clickedX + 1
+            window.move_box.endX = window.move_box.startX + window.width - 1
+        end
+        if e4 - window.clickedY + window.height <= window.move_window.endY and e4 - window.clickedY + 1 >= window.move_window.startY then
+            window.move_box.startY = e4 - window.clickedY + 1
+            window.move_box.endY = window.move_box.startY + window.height - 1
+        end
+        window.display_move_box()
+    elseif e1 == "mouse_up" and window.titlebar.clicked then
+        -- # Update Graphical Elements:
+        window.buttons.titlebar:display(false)
+        window.titlebar.clicked = false
+        move_window.clear(false, true)
+
+        -- # Update Visibility Rules:
+        move_window.visible(false)
+
+        -- # Update Screen Positions:
+        window_screen.resize(window.move_box.startX, window.move_box.startY, window.width, window.height, window.win_screen.level)
+        window.startX = window.move_box.startX
+        window.startY = window.move_box.startY
+        window.endX = window.move_box.endX
+        window.endY = window.move_box.endY
+        window.update()
+
+        -- # Update Main Window:
         window:display(true)
     end
 end
@@ -441,13 +416,13 @@ function new(pars)
         ["height"] = pars.height,
         ["startX"] = pars.startX,
         ["startY"] = pars.startY,
-        ["endX"] = pars.startX + pars.width,
-        ["endY"] = pars.startY + pars.height,
+        ["endX"] = pars.startX + pars.width - 1,
+        ["endY"] = pars.startY + pars.height - 1,
         ["content"] = { 
             ["instruction"] = function() end,
-            ["screen"] = content
+            ["content_screen"] = content
         },
-        ["screen"] = child,
+        ["win_screen"] = child,
         ["move_window"] = move_window,
         ["visible"] = pars.visible,
         ["titlebar"] = {
@@ -466,6 +441,14 @@ function new(pars)
             }
         },
         ["buttons"] = {},
+        ["move_box"] = {
+            ["startX"] = pars.startX,
+            ["startY"] = pars.startY,
+            ["endX"] = pars.startX + pars.width - 1,
+            ["endY"] = pars.startY + pars.height - 1
+        },
+        ["clickedX"] = 0,
+        ["clickedY"] = 0,
         ["can_move"] = pars.can_move,
         ["can_resize"] = pars.can_resize,
         ["can_minimize"] = pars.can_minimize,
@@ -554,8 +537,8 @@ function new(pars)
             ["background"] = window.titlebar.background,
             ["bFlash"] = bFlash,
             ["width"] = window.width,
-            ["level"] = window.screen.level,
-            ["screen"] = window.screen,
+            ["level"] = window.win_screen.level,
+            ["screen"] = window.win_screen,
             ["overwrite"] = true 
         })
     end
@@ -568,7 +551,7 @@ function new(pars)
             ["foreground"] = window.titlebar.minimize.foreground,
             ["background"] = window.titlebar.minimize.background,
             ["bFlash"] = bFlash,
-            ["screen"] = window.screen
+            ["screen"] = window.win_screen
         })
     end
 
@@ -580,7 +563,7 @@ function new(pars)
             ["foreground"] = window.titlebar.maximize.foreground,
             ["background"] = window.titlebar.maximize.background,
             ["bFlash"] = bFlash,
-            ["screen"] = window.screen
+            ["screen"] = window.win_screen
         })
     end
 
@@ -592,7 +575,7 @@ function new(pars)
             ["foreground"] = window.titlebar.close.foreground,
             ["background"] = window.titlebar.close.background,
             ["bFlash"] = bFlash,
-            ["screen"] = window.screen
+            ["screen"] = window.win_screen
         })
     end
 
@@ -604,8 +587,98 @@ function new(pars)
             ["foreground"] = window.body.foreground,
             ["background"] = window.body.background,
             ["tFlash"] = Craft.compliment(window.body.foreground),
-            ["screen"] = window.screen
+            ["screen"] = window.win_screen
         })
+    end
+
+    -- # Window Local Functions:
+    window.display_move_box = function()
+        local move_window = window.move_window:hook() 
+
+        move_window.clear(false, true)
+
+        -- # Left Bar:
+        for y = window.move_box.startY, window.move_box.endY do
+            move_window.setCursorPos(window.move_box.startX, y)
+            if window.move_window.parent.terminal[y][window.move_box.startX]["background"] == colors.black then
+                move_window.setTextColor(colors.white)
+            else
+                move_window.setTextColor(colors.black)
+            end
+            move_window.setBackgroundColor(window.move_window.parent.terminal[y][window.move_box.startX]["background"])
+            move_window.write(string.char(127), false, true)
+        end
+
+        -- # Right Bar:
+        for y = window.move_box.startY, window.move_box.endY do
+            move_window.setCursorPos(window.move_box.endX, y)
+            if window.move_window.parent.terminal[y][window.move_box.endX]["background"] == colors.black then
+                move_window.setTextColor(colors.white)
+            else
+                move_window.setTextColor(colors.black)
+            end
+            move_window.setBackgroundColor(window.move_window.parent.terminal[y][window.move_box.endX]["background"])
+            move_window.write(string.char(127), false, true)
+        end
+
+        -- # Top Bar:
+        for x = window.move_box.startX, window.move_box.endX do
+            move_window.setCursorPos(x, window.move_box.startY)
+            if window.move_window.parent.terminal[window.move_box.startY][x]["background"] == colors.black then
+                move_window.setTextColor(colors.white)
+            else
+                move_window.setTextColor(colors.black)
+            end
+            move_window.setBackgroundColor(window.move_window.parent.terminal[window.move_box.startY][x]["background"])
+            move_window.write(string.char(127), false, true)
+        end
+
+        -- # Bottom Bar:
+        for x = window.move_box.startX, window.move_box.endX do
+            move_window.setCursorPos(x, window.move_box.endY)
+            if window.move_window.parent.terminal[window.move_box.endY][x]["background"] == colors.black then
+                move_window.setTextColor(colors.white)
+            else
+                move_window.setTextColor(colors.black)
+            end
+            move_window.setBackgroundColor(window.move_window.parent.terminal[window.move_box.endY][x]["background"])
+            move_window.write(string.char(127), false, true)
+        end
+    end
+
+    window.update = function()
+        -- # Update Buttons:
+        window.buttons.titlebar:replace(window.startX, window.startY)
+        
+        if window.titlebar.design == "windows" then
+            if window.can_minimize then
+                window.buttons.minimize:replace(window.endX - 8, window.startY)
+            end
+            if window.can_maximize then
+                window.buttons.maximize:replace(window.endX - 5, window.startY)
+            end
+            if window.can_close then
+                window.buttons.close:replace(window.endX - 2, window.startY)
+            end
+        else
+            if window.can_minimize then
+                window.buttons.minimize:replace(window.startX + 3, window.startY)
+            end
+            if window.can_maximize then
+                window.buttons.maximize:replace(window.startX + 5, window.startY)
+            end
+            if window.can_close then
+                window.buttons.close:replace(window.startX, window.startY)
+            end
+        end
+        
+        if window.can_resize then
+            window.buttons.resizer:replace(window.endX, window.endY)
+        end
+
+        -- # Update Window Screens:
+        local content_hook = window.content.content_screen:hook()
+        content_hook.resize(window.startX + 1, window.startY + 1, window.width - 2, window.height - 2, window.content.level)
     end
 
     -- # Code:
@@ -614,7 +687,7 @@ function new(pars)
     end
 
     -- # Return window to User:
-    return window, window.content.screen
+    return window, window.content.content_screen
 end
 
 -- End of Document

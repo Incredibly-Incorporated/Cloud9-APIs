@@ -240,8 +240,8 @@ end
 --[[
 # Function: 'replace', Documentation:
 
-This function is used to replace a button based upon
-the startX, startY, endX, and endX given.
+This function is used to replace the position of a 
+button based upon the startX, startY, given.
 
 > Parameters:
 <Parameter> | TYPE         | Information:

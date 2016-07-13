@@ -189,8 +189,8 @@ local function log(msg, msg_type)
 end
 
 -- # Load Appdata & Profiles from Assests:
-local file_appdata = fs.open("unearth/assests/appdata", "r")
-local file_profiles = fs.open("unearth/assests/profiles", "r")
+local file_appdata = fs.open("Cloud9-APIs/unearth/assests/appdata", "r")
+local file_profiles = fs.open("Cloud9-APIs/unearth/assests/profiles", "r")
 
 -- # Local Variables from Assests:
 local appdata = textutils.unserialize(file_appdata.readAll())
@@ -1098,6 +1098,10 @@ if not C9 then
     else
         UNLOAD_APIS(true)
     end
+else
+    sleep(2)
+    _G.term.clear()
+    _G.term.setCursorPos(1, 1)
 end
 
 -- End of Document

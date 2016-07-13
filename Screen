@@ -728,15 +728,16 @@ functions.write = function(screen, text, override, transparent)
                 sPixel["foreground"] = screen.foreground
                 sPixel["background"] = screen.background
                 sPixel["text"] = letter
-            elseif sPixel["level"] >= tPixel["level"] and screen.isVisible or override then
-                scp(sPixel["xPos"], sPixel["yPos"])
-                spit(letter)
-    
-                tPixel["foreground"] = tonumber(screen.foreground)
-                --tPixel["background"] = tonumber(screen.background)
-                tPixel["level"] = tonumber(sPixel["level"])
-                tPixel["text"] = letter
-                tPixel["screen"] = tostring(screen)
+            else
+                if letter == " " then
+                    sbc(tPixel["background"])
+                    stc(tPixel["foreground"]) 
+                    scp(tPixel["xPos"], tPixel["yPos"])
+                    spit(tPixel["text"])
+                else
+                    scp(sPixel["xPos"], sPixel["yPos"])
+                    spit(letter)   
+                end
             end
     
             -- # Update Current Screen Position:
@@ -764,17 +765,11 @@ functions.write = function(screen, text, override, transparent)
                     tPixel["screen"] = tostring(screen)
                 end
             end
-        elseif pixel["level"] >= tPixel["level"] and screen.isVisible or override then
-            sbc(pixel["background"])
-            stc(pixel["foreground"])
-            scp(pixel["xPos"], pixel["yPos"])
-            spit(pixel["text"])
-
-            tPixel["foreground"] = tonumber(pixel["foreground"])
-            --tPixel["background"] = tonumber(pixel["background"])
-            tPixel["level"] = tonumber(pixel["level"])
-            tPixel["text"] = pixel["text"]
-            tPixel["screen"] = tostring(screen)
+        else
+            if letter == " " and sPixel["text"] ~= " " or letter ~= " " and sPixel["text"] == " " then --or sPixel["text"] ~= " " and letter == " " then
+                scp(sPixel["xPos"], sPixel["yPos"])
+                spit(letter)
+            end
         end
 
         -- # Update Current Screen Position:
@@ -1943,6 +1938,16 @@ functions.resize = function(child, startX, startY, width, height, level)
         return error("height: "..height..", cannot be less than 1", 2)
     end
 
+    if startX < 1 then
+        error("[startX] is less than 1; got <"..startX..">", 2)
+    elseif startY < 1 then
+        error("[startY] is less than 1; got <"..startY..">", 2)
+    elseif width > child.parent.width then
+        error("[width] is greater than parent width <"..child.parent.width..">; got <"..width..">", 2)
+    elseif height > child.parent.height then
+        error("[height] is greater than parent height <"..child.parent.height..">; got <"..height..">", 2)
+    end
+
     -- # Code:
     -- > Drop Terminal Table Levels Before Resize:
     local terminal = nil
@@ -1987,7 +1992,7 @@ functions.resize = function(child, startX, startY, width, height, level)
             child.pixels[y][x] = {
                 ["xPos"] = curX,
                 ["yPos"] = curY,
-                ["text"] = "",
+                ["text"] = " ",
                 ["level"] = level,
                 ["foreground"] = child.foreground,
                 ["background"] = child.background,
@@ -2056,7 +2061,7 @@ functions.refresh = function(screen, all)
     if not all then
         for y = 1, #screen.pixels do
             for x = 1, #screen.pixels[y] do
-                spit(screen.pixels[y][x], false, false)
+                spit(screen.pixels[y][x])
             end
         end
     else
@@ -2065,14 +2070,14 @@ functions.refresh = function(screen, all)
                 for i = 1, #screen.children do
                     for y = 1, #screen.children[i].pixels do
                         for x = 1, #screen.children[i].pixels[y] do
-                            spit(screen.children[i].pixels[y][x], false, false)
+                            spit(screen.children[i].pixels[y][x])
                         end
                     end
                 end
             end
             for y = 1, #screen.pixels do
                 for x = 1, #screen.pixels[y] do
-                    spit(screen.pixels[y][x], false, false)
+                    spit(screen.pixels[y][x])
                 end
             end
         else
@@ -2080,14 +2085,14 @@ functions.refresh = function(screen, all)
                 for i = 1, #screen.parent.children do
                     for y = 1, #screen.parent.children[i].pixels do
                         for x = 1, #screen.parent.children[i].pixels[y] do
-                            spit(screen.parent.children[i].pixels[y][x], false, false)
+                            spit(screen.parent.children[i].pixels[y][x])
                         end
                     end
                 end
             end
             for y = 1, #screen.parent.pixels do
                 for x = 1, #screen.parent.pixels[y] do
-                    spit(screen.parent.pixels[y][x], false, false)
+                    spit(screen.parent.pixels[y][x])
                 end
             end
         end

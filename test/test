@@ -10,7 +10,7 @@ local APIS = {
 }
 
 -- # Functions for Loading & Unloading APIs into/from Environment:
-local function LOAD_APIS(doPrint)
+--[[local function LOAD_APIS(doPrint)
     for ID, path in pairs(APIS) do
         if not os.loadAPI(path) then
             error("\n[API: "..path.."]\nStatus: <Error>\n---", 2)
@@ -20,7 +20,8 @@ local function LOAD_APIS(doPrint)
             sleep(0.05)
         end
     end
-end
+end]]
+
 LOAD_APIS(true)
 
 -- $ Local Program Variables:
@@ -68,8 +69,8 @@ local button_run = Button.new({
 -- $ Local Program Windows:
 local calc_window, calc_screen = Window.new({
     ["name"] = "Calculator",
-    ["width"] = 25,
-    ["height"] = 9,
+    ["width"] = 21,
+    ["height"] = 7,
     ["startX"] = 2,
     ["startY"] = 2,
     ["screen"] = term,

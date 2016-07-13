@@ -110,6 +110,7 @@ function drawPixel(xPos, yPos, color, screen, overwrite)
     else
         terminal.setCursorPos(xPos, yPos)
         local pixel = screen(terminal.getCursorPos())
+        cache = pixel["background"]
         
         terminal.setBackgroundColor(color)
         terminal.setTextColor(pixel["foreground"])
