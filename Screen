@@ -20,7 +20,7 @@ inquiries.
 ]]
 
 --[[ENVIRONMENT VARIABLES]]--
-VERSION = "5.1.2"
+VERSION = "5.2.1"
 
 --[[LOCAL VARIABLES ZONE:]]--
 local functions = {}
@@ -1967,6 +1967,26 @@ functions.resize = function(child, startX, startY, width, height, level)
         end
     end
 
+    -- > Local Code Variables:
+    local growthX, shrinkageX = nil, nil
+    if width > child.width then
+        growthX = width - child.width
+    else
+        shrinkageX = child.width - width
+    end
+
+    local growthY, shrinkageY = nil, nil
+    if height > child.height then
+        growthY = height - child.height
+    else
+        shrinkageY = child.height - height
+    end
+
+    -- > Handle New Pixels from Growth:
+    -- $ WIP...
+    -- > Handle Removing & Updating Current Pixels from Srinkage:
+    -- $ WIP...
+
     -- > Update Child Table:
     child.width = width
     child.height = height
@@ -1978,30 +1998,16 @@ functions.resize = function(child, startX, startY, width, height, level)
     child.curX = 1
     child.curY = 1
     child.level = level
-    child.pixels = {}
 
-    -- > Update Pixels:
+    -- > Update Pixel Positions from New Start Positions:
     for y = 1, height do
         curY = startY + y - 1
-        if curY > child.parent.height then 
-            break
-        end
-        child.pixels[y] = {}
         for x = 1, width do
             curX = startX + x - 1
-            if curX > child.parent.width then
-                break
-            end
 
-            child.pixels[y][x] = {
-                ["xPos"] = curX,
-                ["yPos"] = curY,
-                ["text"] = " ",
-                ["level"] = level,
-                ["foreground"] = child.foreground,
-                ["background"] = child.background,
-                ["display"] = tostring(child.display)
-            }
+            child.pixels[y][x]["xPos"] = curX
+            child.pixels[y][x]["yPos"] = curY
+            child.pixels[y][x]["level"] = level
         end
     end
 
@@ -2063,9 +2069,9 @@ functions.refresh = function(screen, all)
     -- # Code:
     -- # Draw Pixels:
     if not all then
-        for y = 1, #screen.pixels do
-            for x = 1, #screen.pixels[y] do
-                spit(screen.pixels[y][x], false, false)
+        for y = 1, screen.height do
+            for x = 1, screen.width do
+                spit(screen.pixels[y][x])
             end
         end
     else
@@ -2074,18 +2080,18 @@ functions.refresh = function(screen, all)
             if #screen.children > 0 then
                 for i = 1, #screen.children do
                     if screen.children[i].isVisible then
-                        for y = 1, #screen.children[i].pixels do
-                            for x = 1, #screen.children[i].pixels[y] do
-                                spit(screen.children[i].pixels[y][x], false, false)
+                        for y = 1, screen.children[i].height do
+                            for x = 1, screen.children[i].width do
+                                spit(screen.children[i].pixels[y][x])
                             end
                         end
                     end
                 end
             end
             if screen.isVisible then
-                for y = 1, #screen.pixels do
-                    for x = 1, #screen.pixels[y] do
-                        spit(screen.pixels[y][x], false, false)
+                for y = 1, screen.height do
+                    for x = 1, screen.width do
+                        spit(screen.pixels[y][x])
                     end
                 end
             end
@@ -2094,18 +2100,18 @@ functions.refresh = function(screen, all)
             if #screen.parent.children > 0 then
                 for i = 1, #screen.parent.children do
                     if screen.parent.children[i].isVisible then
-                        for y = 1, #screen.parent.children[i].pixels do
-                            for x = 1, #screen.parent.children[i].pixels[y] do
-                                spit(screen.parent.children[i].pixels[y][x], false, false)
+                        for y = 1, screen.parent.children[i].height do
+                            for x = 1, screen.parent.children[i].width do
+                                spit(screen.parent.children[i].pixels[y][x])
                             end
                         end
                     end
                 end
             end
             if screen.parent.isVisible then
-                for y = 1, #screen.parent.pixels do
-                    for x = 1, #screen.parent.pixels[y] do
-                        spit(screen.parent.pixels[y][x], false, false)
+                for y = 1, screen.parent.height do
+                    for x = 1, screen.parent.width do
+                        spit(screen.parent.pixels[y][x])
                     end
                 end
             end
@@ -2295,6 +2301,54 @@ functions.debug = function(screen, file)
     Debugger.log(file..".buffer"..ext, "w", screen.buffer, ID)
     Debugger.log(file..".terminal"..ext, "w", terminal, ID)
     Debugger.log(file..".displays"..ext, "w", displays, ID)
+end
+
+--[[
+# Function: 'remove', Documentation:
+
+This function is used to remove a child from the
+terminal, and redo the pixels. The references
+associated with the child will be removed from the
+parent.
+
+> Parameters:
+<Parameter> | TYPE         | Information:
+------------+--------------+-------------
+<screen>    | TABLE OBJECT | Your parent object.
+<child>     | TABLE OBJECT | The child to remove.
+------------+--------------+-------------
+
+> Returns:
+@return: <nil>
+<>
+]]
+
+functions.remove = function(screen, child)
+    -- # Checking Screen:
+    if type(screen) ~= "table" or not screen.isScreen then error("['screen'] was not defined!", 2) end
+
+    -- # Checking Child Screen:
+    if not child then error("['child'] was not defined!", 2) end
+    if child.isParent then error("['child'] cannot be parent!", 2) end
+
+    -- # Code:
+    -- $ Update Removable Pixels:
+    for y = child.startY, child.endY do
+        for x = child.startX, child.endX do
+            child.parent.terminal[y][x]["level"] = child.parent.level
+        end
+    end
+
+    -- $ Remove Child from Parent Repo:
+    for i = 1, #child.parent.children do
+        if child.parent.children[i] == child then
+            table.remove(child.parent.children, i)
+            return true
+        end
+    end
+
+    -- $ Return Error if Child Could not be Found in Repo:
+    error("Could not find child in parent repository. [CHILD: "..tostring(child).."] | [PARENT: "..tostring(child.parent).."]", 2)
 end
 
 --[[

@@ -22,7 +22,9 @@ local APIS = {
     end
 end]]
 
-LOAD_APIS(true)
+if not LOAD_APIS(true) then
+    return
+end
 
 -- $ Local Program Variables:
 local w, h = term.getSize()
@@ -54,6 +56,7 @@ local button_calculator = Button.new({
     ["yPos"] = 1,
     ["foreground"] = colors.white,
     ["background"] = colors.blue,
+    ["tFlash"] = colors.red,
     ["screen"] = top_bar
 })
 
@@ -63,6 +66,7 @@ local button_run = Button.new({
     ["yPos"] = 1,
     ["foreground"] = colors.white,
     ["background"] = colors.blue,
+    ["tFlash"] = colors.red,
     ["screen"] = top_bar
 })
 
@@ -76,16 +80,26 @@ local button_debug = Button.new({
     ["screen"] = top_bar
 })
 
+local button_refresh = Button.new({
+    ["text"] = "[Refresh]",
+    ["xPos"] = 28,
+    ["yPos"] = 1,
+    ["foreground"] = colors.white,
+    ["background"] = colors.blue,
+    ["tFlash"] = colors.red,
+    ["screen"] = top_bar
+})
+
 -- $ Local Program Windows:
 local calc_window, calc_screen = Window.new({
     ["name"] = "Calculator",
-    ["width"] = 21,
-    ["height"] = 7,
+    ["width"] = 17,
+    ["height"] = 9,
     ["startX"] = 2,
-    ["startY"] = 2,
+    ["startY"] = 3,
     ["screen"] = term,
     ["visible"] = false,
-    ["titlebar_name"] = "Number Pad",
+    ["titlebar_name"] = "# Pad",
     ["titlebar_foreground"] = colors.white,
     ["titlebar_background"] = colors.lime,
     ["titlebar_design"] = "windows",
@@ -98,11 +112,123 @@ local calc_window, calc_screen = Window.new({
     ["can_close"] = true
 })
 
+-- $ Local Variables for Numberpad Window:
+-- # Update Background of Screen:
+local pad_screen = calc_window:add_screen(calc_screen, calc_screen.startX, calc_screen.startY, calc_screen.width, 1, colors.black, colors.white, calc_screen.level + 1)
+
+-- # Build Numberpad Buttons:
+local num_1 = Button.new({
+    ["text"] = "1", ["xPos"] = 2, ["yPos"] = 3, ["xPad"] = 1,
+    ["foregrond"] = colors.black, ["background"] = colors.orange,
+    ["bFlash"] = colors.gray,
+    ["screen"] = calc_screen
+})
+
+local num_2 = Button.new({
+    ["text"] = "2", ["xPos"] = 6, ["yPos"] = 3, ["xPad"] = 1,
+    ["foregrond"] = colors.black, ["background"] = colors.orange,
+    ["bFlash"] = colors.gray,
+    ["screen"] = calc_screen
+})
+
+local num_3 = Button.new({
+    ["text"] = "3", ["xPos"] = 10, ["yPos"] = 3, ["xPad"] = 1,
+    ["foregrond"] = colors.black, ["background"] = colors.orange,
+    ["bFlash"] = colors.gray,
+    ["screen"] = calc_screen
+})
+
+local num_4 = Button.new({
+    ["text"] = "4", ["xPos"] = 2, ["yPos"] = 4, ["xPad"] = 1,
+    ["foregrond"] = colors.black, ["background"] = colors.blue,
+    ["bFlash"] = colors.gray,
+    ["screen"] = calc_screen
+})
+
+local num_5 = Button.new({
+    ["text"] = "5", ["xPos"] = 6, ["yPos"] = 4, ["xPad"] = 1,
+    ["foregrond"] = colors.black, ["background"] = colors.blue,
+    ["bFlash"] = colors.gray,
+    ["screen"] = calc_screen
+})
+
+local num_6 = Button.new({
+    ["text"] = "6", ["xPos"] = 10, ["yPos"] = 4, ["xPad"] = 1,
+    ["foregrond"] = colors.black, ["background"] = colors.blue,
+    ["bFlash"] = colors.gray,
+    ["screen"] = calc_screen
+})
+
+local num_7 = Button.new({
+    ["text"] = "7", ["xPos"] = 2, ["yPos"] = 5, ["xPad"] = 1,
+    ["foregrond"] = colors.black, ["background"] = colors.orange,
+    ["bFlash"] = colors.gray,
+    ["screen"] = calc_screen
+})
+
+local num_8 = Button.new({
+    ["text"] = "8", ["xPos"] = 6, ["yPos"] = 5, ["xPad"] = 1,
+    ["foregrond"] = colors.black, ["background"] = colors.orange,
+    ["bFlash"] = colors.gray,
+    ["screen"] = calc_screen
+})
+
+local num_9 = Button.new({
+    ["text"] = "9", ["xPos"] = 10, ["yPos"] = 5, ["xPad"] = 1,
+    ["foregrond"] = colors.black, ["background"] = colors.orange,
+    ["bFlash"] = colors.gray,
+    ["screen"] = calc_screen
+})
+
+local num_0 = Button.new({
+    ["text"] = "0", ["xPos"] = 6, ["yPos"] = 6, ["xPad"] = 1,
+    ["foregrond"] = colors.black, ["background"] = colors.blue, 
+    ["bFlash"] = colors.gray, 
+    ["screen"] = calc_screen
+})
+
+local pad_clear = Button.new({
+    ["text"] = "C", ["xPos"] = 14, ["yPos"] = 3,
+    ["foreground"] = colors.black, ["background"] = colors.red,
+    ["bFlash"] = colors.gray,
+    ["screen"] = calc_screen
+})
+
+local pad_infinity = Button.new({
+    ["text"] = "I", ["xPos"] = 14, ["yPos"] = 5,
+    ["foreground"] = colors.white, ["background"] = colors.orange,
+    ["bFlash"] = colors.gray,
+    ["screen"] = calc_screen
+})
+
+local pad_enter = Button.new({
+    ["text"] = "=", ["xPos"] = 14, ["yPos"] = 6,
+    ["foreground"] = colors.white, ["background"] = colors.green,
+    ["bFlash"] = colors.gray,
+    ["screen"] = calc_screen
+})
+
 -- $ Local Program Functions:
-local function calculator()
+local function calculator()    
+    -- # Update Calculator Screen:
+    term.setBackgroundColor(calc_screen, colors.lightGray)
     term.clear(calc_screen)
-    term.setCursorPos(calc_screen, 1, 1)
-    term.write(calc_screen, "Hello!")
+    term.clear(pad_screen)
+
+    -- # Display All Buttons:
+    num_1:display()
+    num_2:display()
+    num_3:display()
+    num_4:display()
+    num_5:display()
+    num_6:display()
+    num_7:display()
+    num_8:display()
+    num_9:display()
+    num_0:display()
+    pad_clear:display()
+    pad_infinity:display()
+    pad_enter:display()
 end
 
 -- $ Local Startup Script:
@@ -114,6 +240,7 @@ button_close:display()
 button_calculator:display()
 button_run:display()
 button_debug:display()
+button_refresh:display()
 
 -- $ Program Modules:
 --[[
@@ -139,13 +266,93 @@ local function MODULE_CALCULATOR()
             end
         elseif button_run:call(event, p2, p3) then
             calc_window:run(calculator)
+            os.queueEvent("NUMPAD_EVENT_CALL")
         elseif button_debug:call(event, p2, p3) then
             term.debug(bottom_bar, "debugging/bottom_bar_debug/bottom_debug")
             term.debug(calc_screen, "debugging/calc_screen_debug/calc_debug")
             term:debug("debugging/term_debug/term_debug")
             term.debug(top_bar, "debugging/top_bar_debug/top_debug")
+        elseif button_refresh:call(event, p2, p3) then
+            term.visible(calc_screen, false)
+            term:refresh(true)
+            term.visible(calc_screen, true)
         elseif calc_window:move(event, p2, p3) then
             -- Skip
+        end
+    end
+end
+
+--[[
+    >>>
+        NUMBERPAD
+        MODULE
+    <<<
+]]
+
+local function MODULE_NUMBERPAD()
+    -- $$ Last Dev Here: Continue working on Number Pad Module, & move to Core
+    -- $$              > Figure out how to transfer text to be as smooth as button transfers when moving window...
+    -- # Local Module Variables:
+    local number = ""
+
+    -- # Event Handler:
+    while true do
+        local event, p1, p2, p3 = os.pullEvent()
+
+        if event == "NUMPAD_EVENT_CALL" then
+            term.clear(pad_screen)
+            term.write(pad_screen, number)
+        elseif num_1:call(event, p2, p3) then
+            if number == "Infinity" then number = "" end
+            number = number.."1"
+            os.queueEvent("NUMPAD_EVENT_CALL")
+        elseif num_2:call(event, p2, p3) then
+            if number == "Infinity" then number = "" end
+            number = number.."2"
+            os.queueEvent("NUMPAD_EVENT_CALL")
+        elseif num_3:call(event, p2, p3) then
+            if number == "Infinity" then number = "" end
+            number = number.."3"
+            os.queueEvent("NUMPAD_EVENT_CALL")
+        elseif num_4:call(event, p2, p3) then
+            if number == "Infinity" then number = "" end
+            number = number.."4"
+            os.queueEvent("NUMPAD_EVENT_CALL")
+        elseif num_5:call(event, p2, p3) then
+            if number == "Infinity" then number = "" end
+            number = number.."5"
+            os.queueEvent("NUMPAD_EVENT_CALL")
+        elseif num_6:call(event, p2, p3) then
+            if number == "Infinity" then number = "" end
+            number = number.."6"
+            os.queueEvent("NUMPAD_EVENT_CALL")
+        elseif num_7:call(event, p2, p3) then
+            if number == "Infinity" then number = "" end
+            number = number.."7"
+            os.queueEvent("NUMPAD_EVENT_CALL")
+        elseif num_8:call(event, p2, p3) then
+            if number == "Infinity" then number = "" end
+            number = number.."8"
+            os.queueEvent("NUMPAD_EVENT_CALL")
+        elseif num_9:call(event, p2, p3) then
+            if number == "Infinity" then number = "" end
+            number = number.."9"
+            os.queueEvent("NUMPAD_EVENT_CALL")
+        elseif num_0:call(event, p2, p3) then
+            if number == "Infinity" then number = "" end
+            number = number.."0"
+            os.queueEvent("NUMPAD_EVENT_CALL")
+        elseif pad_clear:call(event, p2, p3) then
+            if number == "Infinity" then number = "" end
+            number = ""
+            os.queueEvent("NUMPAD_EVENT_CALL")
+        elseif pad_infinity:call(event, p2, p3) then
+            if number == "Infinity" then number = "" end
+            number = "Infinity"
+            os.queueEvent("NUMPAD_EVENT_CALL")
+        elseif pad_enter:call(event, p2, p3) then
+            calc_window:display(false)
+            return number
         end
     end
 end
@@ -205,6 +412,7 @@ end
 
 -- $ Adding Modules:
 environment:add("CALCULATOR", MODULE_CALCULATOR)
+environment:add("NUMBERPAD", MODULE_NUMBERPAD)
 environment:add("CLOCK", MODULE_CLOCK)
 environment:add("TERMINATE", MODULE_TERMINATION)
 

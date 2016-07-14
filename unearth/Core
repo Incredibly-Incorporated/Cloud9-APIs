@@ -197,7 +197,7 @@ local appdata = textutils.unserialize(file_appdata.readAll())
 local profiles = textutils.unserialize(file_profiles.readAll())
 local loaded_profile = profiles[appdata.last_profile]
 
--- # Startup Definitions:
+-- * Startup Definitions:
 -- # Parent Clearing:
 term:setBackgroundColor(colors.black)
 term:setTextColor(colors.white)
@@ -1099,7 +1099,7 @@ if not C9 then
         UNLOAD_APIS(true)
     end
 else
-    sleep(2)
+    sleep(1)
     _G.term.clear()
     _G.term.setCursorPos(1, 1)
 end
