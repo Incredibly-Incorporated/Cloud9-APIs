@@ -43,75 +43,90 @@ functions.display = function(window, visible)
     -- # Declaring Screen Wrap:
     local content = window.content.content_screen:hook()
     local win_screen = window.win_screen:hook()
+    local hook = nil
+    if window.win_screen.isParent then
+        hook = window.win_screen
+    else
+        hook = window.win_screen.parent
+    end
 
     -- # Code:
     -- > Make Window Screens Visible:
     window.visible = visible
-    content.visible(visible)
-    win_screen.visible(visible)
+    window.win_screen.parent.visible(window.win_screen, visible)
+    window.win_screen.parent.visible(window.content.content_screen, visible)
 
-    -- > Draw Main Window Body:
-    win_screen.setBackgroundColor(window.body.background)
-    win_screen.clear()
+    if #window.screens > 0 then
+        for i = 1, #window.screens do
+            hook.visible(window.screens[i], visible)
+        end
+    end
 
     -- # Displaying Window Buttons:
-    if window.can_move then
-        window.buttons.titlebar:display()
-    end
-
-    if window.can_minimize then
-        window.buttons.minimize:display()
-    end
-    if window.can_maximize then
-        window.buttons.maximize:display()
-    end
-    if window.can_close then
-        window.buttons.close:display()
-    end
-
-    if window.can_resize then
-        window.buttons.resize:display()
-    end
-
-    -- # Update Button Refreshes:
-    win_screen.refresh(true)
-
-    -- # Draw Titlebar Information
-    win_screen.setCursorPos(window.titlebar.text_xPos, window.titlebar.text_yPos)
-    win_screen.setBackgroundColor(window.titlebar.background)
-    win_screen.setTextColor(window.titlebar.foreground)
-    win_screen.write(window.titlebar.name)
-
-    -- # Draw Inactive Interfaces:
-    if not window.can_minimize then
-        win_screen.setCursorPos(window.titlebar.minimize.xPos, window.titlebar.minimize.yPos)
-        win_screen.setBackgroundColor(window.titlebar.minimize.background)
-        if window.titlebar.background ~= colors.lightGray then
-            win_screen.setTextColor(colors.lightGray)
-        else
-            win_screen.setTextColor(colors.gray)
+    if visible == true then
+        if window.can_move then
+            window.buttons.titlebar:display()
         end
-        win_screen.write(window.titlebar.minimize.text)
-    end
-    if not window.can_maximize then
-        win_screen.setCursorPos(window.titlebar.maximize.xPos, window.titlebar.maximize.yPos)
-        win_screen.setBackgroundColor(window.titlebar.maximize.background)
-        if window.titlebar.background ~= colors.lightGray then
-            win_screen.setTextColor(colors.lightGray)
-        else
-            win_screen.setTextColor(colors.gray)
+    
+        if window.can_minimize then
+            window.buttons.minimize:display()
         end
-        win_screen.write(window.titlebar.maximize.text)
-    end
-    if not window.can_close then
-        win_screen.setCursorPos(window.titlebar.close.xPos, window.titlebar.close.yPos)
-        win_screen.setBackgroundColor(window.titlebar.close.background)
-        if window.titlebar.background ~= colors.lightGray then
-            win_screen.setTextColor(colors.lightGray)
-        else
-            win_screen.setTextColor(colors.gray)
+        if window.can_maximize then
+            window.buttons.maximize:display()
         end
-        win_screen.write(window.titlebar.close.text)
+        if window.can_close then
+            window.buttons.close:display()
+        end
+    
+        if window.can_resize then
+            window.buttons.resize:display()
+        end
+
+        -- # Update Button Refreshes:
+        win_screen.refresh(true)
+    
+        -- # Draw Titlebar Information
+        win_screen.setCursorPos(window.titlebar.text_xPos, window.titlebar.text_yPos)
+        win_screen.setBackgroundColor(window.titlebar.background)
+        win_screen.setTextColor(window.titlebar.foreground)
+        win_screen.write(window.titlebar.name)
+    
+        -- # Draw Inactive Interfaces:
+        if not window.can_minimize then
+            win_screen.setCursorPos(window.titlebar.minimize.xPos, window.titlebar.minimize.yPos)
+            win_screen.setBackgroundColor(window.titlebar.minimize.background)
+            if window.titlebar.background ~= colors.lightGray then
+                win_screen.setTextColor(colors.lightGray)
+            else
+                win_screen.setTextColor(colors.gray)
+            end
+            win_screen.write(window.titlebar.minimize.text)
+        end
+        if not window.can_maximize then
+            win_screen.setCursorPos(window.titlebar.maximize.xPos, window.titlebar.maximize.yPos)
+            win_screen.setBackgroundColor(window.titlebar.maximize.background)
+            if window.titlebar.background ~= colors.lightGray then
+                win_screen.setTextColor(colors.lightGray)
+            else
+                win_screen.setTextColor(colors.gray)
+            end
+            win_screen.write(window.titlebar.maximize.text)
+        end
+        if not window.can_close then
+            win_screen.setCursorPos(window.titlebar.close.xPos, window.titlebar.close.yPos)
+            win_screen.setBackgroundColor(window.titlebar.close.background)
+            if window.titlebar.background ~= colors.lightGray then
+                win_screen.setTextColor(colors.lightGray)
+            else
+                win_screen.setTextColor(colors.gray)
+            end
+            win_screen.write(window.titlebar.close.text)
+        end
+    else
+        -- # Refresh Hidden Screens:
+        win_screen.refresh(true)
+        window.visible = false
+        window.running = false
     end
 end
 
@@ -138,7 +153,7 @@ functions.run = function(window, instruction)
 
     -- # Checking if Screen is Visible:
     if not window.visible then 
-        return
+        window:display(true)
     end
 
     -- # Checking Variables:
@@ -173,7 +188,29 @@ This function is used to move a window.
 @return: <nil>
 
 > Notes:
-Ensure this function is called within an event manager.
+Ensure this function is called within an event manager!
+
+Also, the comparator function will be called with the move_box's current
+x, and y positions. This is due to the fact that the drag might be below
+your expected position, and the box will have bypassed that drag event.
+
+Example:
+local your_comparator_func(startX, startY, endX, endY) 
+    local w, h = term.getSize()
+
+    if startY > 1 and endY < h then
+        return true
+    else
+        return false
+    end
+end
+
+your_window:move(e1, e3, e4, your_comparator_func)
+
+** DO NOT ADD THE '()' AT THE END OF YOUR FUNCTION **
+
+If you are looking to block the box from going to a certain area, ensure
+your comparator function can receive the arguments of the move_box's position! 
 <>
 ]]
 
@@ -187,31 +224,18 @@ functions.move = function(window, e1, e3, e4, comparator)
     end
 
     -- # Checking Variables:
-    if comparator then
-        Debugger.check(comparator, "comparator", "function")
-    end
-
     if type(e3) ~= "number" or type(e4) ~= "number" then
         return false
     end
 
-    -- # Defining Local Function Variables:
-
-    local move_window, window_screen = window.move_window:hook(), window.win_screen:hook()
-    local tracker = 0
-
-    -- # Local Function Provided Based Upon Comparator Function if Provided:
-    local function check()
-        if comparator then
-            if not comparator() then
-                return false
-            end
-        else
-            return true
-        end
+    if comparator then
+        Debugger.check(comparator, "comparator", "function")
     end
 
-    -- # Local Move Box & Function:
+    -- # Defining Local Function Variables:
+    local move_window, window_screen = window.move_window:hook(), window.win_screen:hook()
+
+    -- # Make Move Window Visible:
     move_window.visible(true)
 
     -- # Code:
@@ -220,31 +244,36 @@ functions.move = function(window, e1, e3, e4, comparator)
         window.titlebar.clicked = true
         window.clickedX, window.clickedY = e3, e4
 
+        -- # Update Window Move Comparator Index:
+        if comparator then
+            window.move_comparator = comparator
+        end
+
         -- # Update Move Box Variables & Display Changes:
         window.move_box.startX = window.startX
         window.move_box.startY = window.startY
         window.move_box.endX = window.endX
         window.move_box.endY = window.endY
         window.display_move_box()
-    elseif e1 == "mouse_drag" and window.titlebar.clicked and check() then
+    elseif e1 == "mouse_drag" and window.titlebar.clicked then
         -- # Logical Move Statements:
-        if e3 - window.clickedX == 1 then
+        if e3 - window.clickedX == 1 and window.move_comparator(window.move_box.startX + 1, window.move_box.startY, window.move_box.endX + 1, window.move_box.endY) then
             if window.move_box.endX + 1 <= window.move_window.endX then
                 window.move_box.startX = window.move_box.startX + 1
                 window.move_box.endX = window.move_box.endX + 1
             end 
-        elseif e3 - window.clickedX == -1 then
+        elseif e3 - window.clickedX == -1 and window.move_comparator(window.move_box.startX - 1, window.move_box.startY, window.move_box.endX - 1, window.move_box.endY) then
             if window.move_box.startX - 1 >= window.move_window.startX then
                 window.move_box.startX = window.move_box.startX - 1
                 window.move_box.endX = window.move_box.endX - 1
             end
         end
-        if e4 - window.clickedY == 1 then
+        if e4 - window.clickedY == 1 and window.move_comparator(window.move_box.startX, window.move_box.startY + 1, window.move_box.endX, window.move_box.endY + 1) then
             if window.move_box.endY + 1 <= window.move_window.endY then
                 window.move_box.startY = window.move_box.startY + 1
                 window.move_box.endY = window.move_box.endY + 1
             end
-        elseif e4 - window.clickedY == -1 then
+        elseif e4 - window.clickedY == -1 and window.move_comparator(window.move_box.startX, window.move_box.startY - 1, window.move_box.endX, window.move_box.endY - 1) then
             if window.move_box.startY - 1 >= window.move_window.startY then
                 window.move_box.startY = window.move_box.startY - 1
                 window.move_box.endY = window.move_box.endY - 1
@@ -297,6 +326,70 @@ functions.move = function(window, e1, e3, e4, comparator)
 end
 
 --[[
+# Function: 'check', Documentation:
+
+This function is used to check if interfaces are
+clicked by the user.
+
+> Parameters:
+<Parameter>   | TYPE         | Information:
+--------------+--------------+-------------
+<window>      | TABLE OBJECT | The window object to display. 
+<e1>          | NUMBER       | Parameter 1, typically the event type.
+<e3>          | NUMBER       | Parameter 3, the xPos of click, or let go.
+<e4>          | NUMBER       | Parameter 4, the yPos of click, or let go.
+<comparator>  | FUNCTION     | A comparator function if you need a special
+              |              | condition met. Useful for border checking.
+--------------+--------------+-------------
+
+> Returns:
+@return: "win_moved", "win_minimized", "win_maximized", "win_closed"
+
+> Notes:
+1: ["win_moved"]: is returned if the window is moveable, and it was successfully moved.
+2: ["win_minimized"]: is returned if the window minimized interface is clicked.
+3: ["win_maximized"]: is returned if the window maximized interface is clicked.
+4: ["win_closed"]: is returned if the window close interface is clicked.
+
+5: Ensure this function is called within an event manager.
+
+6: IMPORTANT:
+DO NOT CHECK FOR AN EVENT BEFORE CALLING THIS FUNCTION!
+IT NEEDS TO BE ABLE TO PROCESS MULTIPLE EVENTS!
+<>
+]]
+
+functions.check = function(window, e1, e3, e4, comparator)
+    -- # Checking Screen:
+    if type(window) ~= "table" or not window.isWindow then error("['window'] was not defined!", 2) end
+
+    -- # Checking if Screen is Visible:
+    if not window.visible then 
+        return false
+    end
+
+    -- # Checking Variables:
+    if type(e3) ~= "number" or type(e4) ~= "number" then
+        return false
+    end
+
+    if comparator then
+        Debugger.check(comparator, "comparator", "function")
+    end
+
+    -- # Code:
+    if window.can_move and window:move(e1, e3, e4, comparator) then
+        return "win_moved"
+    elseif window.can_minimize and window.buttons.minimize:call(e1, e3, e4) then
+        return "win_minimized"
+    elseif window.can_maximize and window.buttons.maximize:call(e1, e3, e4) then
+        return "win_maximized"
+    elseif window.can_close and window.buttons.close:call(e1, e3, e4) then
+        return "win_closed"
+    end
+end
+
+--[[
 # Function: 'add_screen', Documentation:
 
 This function is used to add a screen that will be
@@ -341,6 +434,13 @@ functions.add_screen = function(window, screen, startX, startY, width, height, f
         parent = screen
     else
         parent = screen.parent
+    end
+
+    -- # Overriding Necessary Screen Variables:
+    if not window.visible then
+        hidden = true
+    else
+        hidden = false
     end
 
     -- # Code:
@@ -389,7 +489,7 @@ functions.debug = function(window, file)
     end
 
     -- # Code:
-    Debugger.log(file, "w", window, ID, "screen", "content", "move_window", "buttons")
+    Debugger.log(file, "w", window, ID, "win_screen", "screens", "content", "move_window", "buttons")
 end
 
 --[[END LOCAL FUNCTIONS ZONE]]--
@@ -409,6 +509,7 @@ which the user can manage a window.
 ["startX"]              | NUMBER       | <OPTIONAL> | What column to place the left corner of the window in.
 ["startY"]              | NUMBER       | <OPTIONAL> | What row to place the left corner of the window in.
 ["screen"]              | TABLE OBJECT | <REQUIRED> | The parent screen to have the window attached to.
+["level"]               | NUMBER       | <OPTIONAL> | If you would like to override the level of your screen, pass it here.
 ["visible"]             | BOOLEAN      | <OPTIONAL> | Whether or not the window is visible on screen.
 ["titlebar_name"]       | STRING       | <OPTIONAL> | The text to display on the titlebar.
 ["titlebar_foreground"] | COLOR        | <OPTIONAL> | What color the titlebar text should be.
@@ -506,6 +607,7 @@ function new(pars)
     else
         hidden = true
     end
+    pars.level = pars.level or pars.screen.level 
 
     -- # Building Child Screen & Content Screen off of Parent:
     local child = pars.screen:add(
@@ -515,7 +617,7 @@ function new(pars)
         pars.height, 
         pars.window_foreground, 
         pars.window_background, 
-        pars.screen.level + 1,
+        pars.level + 1,
         hidden
     )
 
@@ -526,7 +628,7 @@ function new(pars)
         pars.height - 2,
         colors.white,
         colors.black,
-        pars.screen.level + 2,
+        pars.level + 2,
         hidden
     )
 
@@ -537,7 +639,7 @@ function new(pars)
         h,
         pars.window_foreground,
         pars.window_background,
-        pars.screen.level + 3,
+        pars.level + 3,
         true,
         true
     )
@@ -581,6 +683,7 @@ function new(pars)
             ["endX"] = pars.startX + pars.width - 1,
             ["endY"] = pars.startY + pars.height - 1
         },
+        ["move_comparator"] = function() return true end,
         ["clickedX"] = 0,
         ["clickedY"] = 0,
         ["can_move"] = pars.can_move,
@@ -658,11 +761,11 @@ function new(pars)
     end
 
     -- # Building Window Buttons:
-    local bFlash = nil
+    local bFlash, tFlash = nil, nil
     if pars.titlebar_background == colors.gray then
-        bFlash = colors.lightGray
+        bFlash, tFlash = colors.lightGray, colors.lightGray
     else
-        bFlash = colors.gray
+        bFlash, tFlash = colors.gray, colors.gray 
     end
 
     if pars.can_move then
@@ -679,39 +782,75 @@ function new(pars)
     end
 
     if pars.can_minimize then
-        window.buttons.minimize = Button.new({
-            ["text"] = window.titlebar.minimize.text,
-            ["xPos"] = window.titlebar.minimize.xPos,
-            ["yPos"] = window.titlebar.minimize.yPos,
-            ["foreground"] = window.titlebar.minimize.foreground,
-            ["background"] = window.titlebar.minimize.background,
-            ["bFlash"] = bFlash,
-            ["screen"] = window.win_screen
-        })
+        if pars.titlebar_design == "windows" then
+            window.buttons.minimize = Button.new({
+                ["text"] = window.titlebar.minimize.text,
+                ["xPos"] = window.titlebar.minimize.xPos,
+                ["yPos"] = window.titlebar.minimize.yPos,
+                ["foreground"] = window.titlebar.minimize.foreground,
+                ["background"] = window.titlebar.minimize.background,
+                ["bFlash"] = bFlash,
+                ["screen"] = window.win_screen
+            })
+        else
+            window.buttons.minimize = Button.new({
+                ["text"] = window.titlebar.minimize.text,
+                ["xPos"] = window.titlebar.minimize.xPos,
+                ["yPos"] = window.titlebar.minimize.yPos,
+                ["foreground"] = window.titlebar.minimize.foreground,
+                ["background"] = window.titlebar.minimize.background,
+                ["tFlash"] = tFlash,
+                ["screen"] = window.win_screen
+            })
+        end
     end
 
     if pars.can_maximize then
-        window.buttons.maximize = Button.new({
-            ["text"] = window.titlebar.maximize.text,
-            ["xPos"] = window.titlebar.maximize.xPos,
-            ["yPos"] = window.titlebar.maximize.yPos,
-            ["foreground"] = window.titlebar.maximize.foreground,
-            ["background"] = window.titlebar.maximize.background,
-            ["bFlash"] = bFlash,
-            ["screen"] = window.win_screen
-        })
+        if pars.titlebar_design == "windows" then
+            window.buttons.maximize = Button.new({
+                ["text"] = window.titlebar.maximize.text,
+                ["xPos"] = window.titlebar.maximize.xPos,
+                ["yPos"] = window.titlebar.maximize.yPos,
+                ["foreground"] = window.titlebar.maximize.foreground,
+                ["background"] = window.titlebar.maximize.background,
+                ["bFlash"] = bFlash,
+                ["screen"] = window.win_screen
+            })
+        else
+            window.buttons.maximize = Button.new({
+                ["text"] = window.titlebar.maximize.text,
+                ["xPos"] = window.titlebar.maximize.xPos,
+                ["yPos"] = window.titlebar.maximize.yPos,
+                ["foreground"] = window.titlebar.maximize.foreground,
+                ["background"] = window.titlebar.maximize.background,
+                ["tFlash"] = tFlash,
+                ["screen"] = window.win_screen
+            })
+        end
     end
 
     if pars.can_close then
-        window.buttons.close = Button.new({
-            ["text"] = window.titlebar.close.text,
-            ["xPos"] = window.titlebar.close.xPos,
-            ["yPos"] = window.titlebar.close.yPos,
-            ["foreground"] = window.titlebar.close.foreground,
-            ["background"] = window.titlebar.close.background,
-            ["bFlash"] = bFlash,
-            ["screen"] = window.win_screen
-        })
+        if pars.titlebar_design == "windows" then
+            window.buttons.close = Button.new({
+                ["text"] = window.titlebar.close.text,
+                ["xPos"] = window.titlebar.close.xPos,
+                ["yPos"] = window.titlebar.close.yPos,
+                ["foreground"] = window.titlebar.close.foreground,
+                ["background"] = window.titlebar.close.background,
+                ["bFlash"] = bFlash,
+                ["screen"] = window.win_screen
+            })
+        else
+            window.buttons.close = Button.new({
+                ["text"] = window.titlebar.close.text,
+                ["xPos"] = window.titlebar.close.xPos,
+                ["yPos"] = window.titlebar.close.yPos,
+                ["foreground"] = window.titlebar.close.foreground,
+                ["background"] = window.titlebar.close.background,
+                ["tFlash"] = tFlash,
+                ["screen"] = window.win_screen
+            })
+        end
     end
 
     if pars.can_resize then

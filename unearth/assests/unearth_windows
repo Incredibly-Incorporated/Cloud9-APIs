@@ -1,0 +1,298 @@
+--[[
+Unearth Documentation:
+
+This assest file is used to store window modules.
+It will be loaded as an API in which the program
+can interface with the static variables within this
+file. 
+
+** DO NOT EDIT UNLESS YOU KNOW WHAT YOU'RE DOING! **
+--]]
+
+--[[ 
+>>
+    Calculator / Number Pad
+    Window
+<<
+]]
+
+-- $ Local Number Calculator/# Pad Window:
+calc_window, calc_screen = Window.new({
+    ["name"] = "Calculator",
+    ["width"] = 17,
+    ["height"] = 9,
+    ["startX"] = 2,
+    ["startY"] = 3,
+    ["screen"] = _G.unearth.unearth_term,
+    ["level"] = 4,
+    ["visible"] = false,
+    ["titlebar_name"] = "# Pad",
+    ["titlebar_foreground"] = colors.black,
+    ["titlebar_background"] = colors.orange,
+    ["titlebar_design"] = "unix",
+    ["window_foreground"] = colors.white,
+    ["window_background"] = colors.gray,
+    ["can_move"] = true,
+    ["can_resize"] = false,
+    ["can_minimize"] = false,
+    ["can_maximize"] = false,
+    ["can_close"] = true
+})
+
+-- $ Local Variables for Numberpad Window:
+local pad_screen = calc_window:add_screen(calc_screen, calc_screen.startX, calc_screen.startY, calc_screen.width, 1, colors.black, colors.white, calc_screen.level + 1)
+
+-- $ Global Variables for Numberpad Window:
+editting_variable = ""
+
+-- # Build Numberpad Buttons:
+local num_1 = Button.new({
+    ["text"] = "1", ["xPos"] = 2, ["yPos"] = 3, ["xPad"] = 1,
+    ["foregrond"] = colors.black, ["background"] = colors.orange,
+    ["bFlash"] = colors.gray,
+    ["screen"] = calc_screen
+})
+
+local num_2 = Button.new({
+    ["text"] = "2", ["xPos"] = 6, ["yPos"] = 3, ["xPad"] = 1,
+    ["foregrond"] = colors.black, ["background"] = colors.orange,
+    ["bFlash"] = colors.gray,
+    ["screen"] = calc_screen
+})
+
+local num_3 = Button.new({
+    ["text"] = "3", ["xPos"] = 10, ["yPos"] = 3, ["xPad"] = 1,
+    ["foregrond"] = colors.black, ["background"] = colors.orange,
+    ["bFlash"] = colors.gray,
+    ["screen"] = calc_screen
+})
+
+local num_4 = Button.new({
+    ["text"] = "4", ["xPos"] = 2, ["yPos"] = 4, ["xPad"] = 1,
+    ["foregrond"] = colors.black, ["background"] = colors.blue,
+    ["bFlash"] = colors.gray,
+    ["screen"] = calc_screen
+})
+
+local num_5 = Button.new({
+    ["text"] = "5", ["xPos"] = 6, ["yPos"] = 4, ["xPad"] = 1,
+    ["foregrond"] = colors.black, ["background"] = colors.blue,
+    ["bFlash"] = colors.gray,
+    ["screen"] = calc_screen
+})
+
+local num_6 = Button.new({
+    ["text"] = "6", ["xPos"] = 10, ["yPos"] = 4, ["xPad"] = 1,
+    ["foregrond"] = colors.black, ["background"] = colors.blue,
+    ["bFlash"] = colors.gray,
+    ["screen"] = calc_screen
+})
+
+local num_7 = Button.new({
+    ["text"] = "7", ["xPos"] = 2, ["yPos"] = 5, ["xPad"] = 1,
+    ["foregrond"] = colors.black, ["background"] = colors.orange,
+    ["bFlash"] = colors.gray,
+    ["screen"] = calc_screen
+})
+
+local num_8 = Button.new({
+    ["text"] = "8", ["xPos"] = 6, ["yPos"] = 5, ["xPad"] = 1,
+    ["foregrond"] = colors.black, ["background"] = colors.orange,
+    ["bFlash"] = colors.gray,
+    ["screen"] = calc_screen
+})
+
+local num_9 = Button.new({
+    ["text"] = "9", ["xPos"] = 10, ["yPos"] = 5, ["xPad"] = 1,
+    ["foregrond"] = colors.black, ["background"] = colors.orange,
+    ["bFlash"] = colors.gray,
+    ["screen"] = calc_screen
+})
+
+local num_0 = Button.new({
+    ["text"] = "0", ["xPos"] = 6, ["yPos"] = 6, ["xPad"] = 1,
+    ["foregrond"] = colors.black, ["background"] = colors.blue, 
+    ["bFlash"] = colors.gray, 
+    ["screen"] = calc_screen
+})
+
+local pad_clear = Button.new({
+    ["text"] = "C", ["xPos"] = 14, ["yPos"] = 3,
+    ["foreground"] = colors.black, ["background"] = colors.red,
+    ["bFlash"] = colors.gray,
+    ["screen"] = calc_screen
+})
+
+local pad_infinity = Button.new({
+    ["text"] = "I", ["xPos"] = 14, ["yPos"] = 5,
+    ["foreground"] = colors.white, ["background"] = colors.orange,
+    ["bFlash"] = colors.gray,
+    ["screen"] = calc_screen
+})
+
+local pad_enter = Button.new({
+    ["text"] = "=", ["xPos"] = 14, ["yPos"] = 6,
+    ["foreground"] = colors.white, ["background"] = colors.green,
+    ["bFlash"] = colors.gray,
+    ["screen"] = calc_screen
+})
+
+-- $ Local Program Functions:
+function display_numberpad()    
+    -- # Update Calculator Screen:
+    _G.unearth.unearth_term.setBackgroundColor(calc_screen, colors.lightGray)
+    _G.unearth.unearth_term.clear(calc_screen)
+    _G.unearth.unearth_term.clear(pad_screen)
+
+    -- # Display All Buttons:
+    num_1:display()
+    num_2:display()
+    num_3:display()
+    num_4:display()
+    num_5:display()
+    num_6:display()
+    num_7:display()
+    num_8:display()
+    num_9:display()
+    num_0:display()
+    pad_clear:display()
+    pad_infinity:display()
+    pad_enter:display()
+end
+
+--[[
+    >>>
+        NUMBERPAD
+        MODULE
+    <<<
+]]
+
+function MODULE_NUMBERPAD()
+    -- # Local Module Variables:
+    local number, formatted, reset = "", "", false
+
+    -- # Local Module Functions:
+    local function format()
+        if number == "Infinity" then
+            formatted = number
+        elseif number:len() < 4 then
+            formatted = number
+        elseif number:len() == 4 then
+            formatted = number:sub(1, 1)..","..number:sub(2, 4)
+        elseif number:len() == 5 then
+            formatted = number:sub(1, 2)..","..number:sub(3, 5)
+        elseif number:len() == 6 then
+            formatted = number:sub(1, 3)..","..number:sub(4, 6)
+        end
+    end
+
+    -- # Event Handler:
+    while true do
+        local event, p1, p2, p3 = os.pullEvent()
+
+        if reset then
+            number, reset = "", false
+            format()
+            os.queueEvent("NUMPAD_EVENT_CALL")
+        elseif event == "UNEARTH_OPEN_NUMBERPAD" then
+            editting_variable = p1
+        elseif event == "NUMPAD_EVENT_CALL" then
+            _G.unearth.unearth_term.clear(pad_screen)
+            _G.unearth.unearth_term.write(pad_screen, formatted)
+        elseif num_1:call(event, p2, p3) then
+            if number == "Infinity" then number = "" end
+            if number:len() < 6 then
+                number = number.."1"
+            end
+            format()
+            os.queueEvent("NUMPAD_EVENT_CALL")
+        elseif num_2:call(event, p2, p3) then
+            if number == "Infinity" then number = "" end
+            if number:len() < 6 then
+                number = number.."2"
+            end
+            format()
+            os.queueEvent("NUMPAD_EVENT_CALL")
+        elseif num_3:call(event, p2, p3) then
+            if number == "Infinity" then number = "" end
+            if number:len() < 6 then
+                number = number.."3"
+            end
+            format()
+            os.queueEvent("NUMPAD_EVENT_CALL")
+        elseif num_4:call(event, p2, p3) then
+            if number == "Infinity" then number = "" end
+            if number:len() < 6 then
+                number = number.."4"
+            end
+            format()
+            os.queueEvent("NUMPAD_EVENT_CALL")
+        elseif num_5:call(event, p2, p3) then
+            if number == "Infinity" then number = "" end
+            if number:len() < 6 then
+                number = number.."5"
+            end
+            format()
+            os.queueEvent("NUMPAD_EVENT_CALL")
+        elseif num_6:call(event, p2, p3) then
+            if number == "Infinity" then number = "" end
+            if number:len() < 6 then
+                number = number.."6"
+            end
+            format()
+            os.queueEvent("NUMPAD_EVENT_CALL")
+        elseif num_7:call(event, p2, p3) then
+            if number == "Infinity" then number = "" end
+            if number:len() < 6 then
+                number = number.."7"
+            end
+            format()
+            os.queueEvent("NUMPAD_EVENT_CALL")
+        elseif num_8:call(event, p2, p3) then
+            if number == "Infinity" then number = "" end
+            if number:len() < 6 then
+                number = number.."8"
+            end
+            format()
+            os.queueEvent("NUMPAD_EVENT_CALL")
+        elseif num_9:call(event, p2, p3) then
+            if number == "Infinity" then number = "" end
+            if number:len() < 6 then
+                number = number.."9"
+            end
+            format()
+            os.queueEvent("NUMPAD_EVENT_CALL")
+        elseif num_0:call(event, p2, p3) then
+            if number == "Infinity" then number = "" end
+            if number ~= "" and number:len() < 6 then
+                number = number.."0"
+            end
+            format()
+            os.queueEvent("NUMPAD_EVENT_CALL")
+        elseif pad_clear:call(event, p2, p3) then
+            if number == "Infinity" then number = "" end
+            number = ""
+            format()
+            os.queueEvent("NUMPAD_EVENT_CALL")
+        elseif pad_infinity:call(event, p2, p3) then
+            if editting_variable == "length" then
+                if number == "Infinity" then number = "" end
+                number = "Infinity"
+                format()
+                os.queueEvent("NUMPAD_EVENT_CALL")
+            end
+        elseif pad_enter:call(event, p2, p3) then
+            calc_window:display(false)
+            reset = true
+            format()
+            os.queueEvent("UNEARTH_FINISHED_CALCULATING", editting_variable, number)
+        elseif calc_window:check(event, p2, p3) == "win_closed" then
+            calc_window:display(false)
+            reset = true
+            format()
+            os.queueEvent("UNEARTH_FINISHED_CALCULATING", editting_variable, number)
+        end
+    end
+end
+
+-- End of Document

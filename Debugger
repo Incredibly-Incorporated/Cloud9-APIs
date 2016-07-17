@@ -136,7 +136,7 @@ local function serializeImpl(t, tTracking, sIndent)
     local sType = type(t)
     if sType == "table" then
         if tTracking[t] ~= nil then
-            error("Cannot serialize table with recursive entries", 2)
+            error("Cannot serialize table with recursive entries", 6)
         end
         tTracking[t] = true
 

@@ -1,0 +1,197 @@
+-- # Test for Environment API:
+term.clear()
+term.setCursorPos(1, 1)
+print("Environment Version: "..Environment.VERSION)
+print("Press Any Key to Begin...")
+os.pullEvent("key")
+term.clear()
+
+--[[
+$ Implement new windows and buttons to add a new
+'random character' using prompt windows, buttons,
+etc.
+]]
+
+-- # Local Variables for Test:
+local w, h = term.getSize()
+local cenX, cenY = Text.center()
+
+local tManager = Environment.new()
+local terminal = Screen.new()
+
+local color = colors.lime
+
+local function random(x, y, rest)
+    term.setTextColor(color)
+    term.setCursorPos(x, y)
+
+    local rand = math.random(1, 255)
+    term.write(string.char(rand))
+    sleep(rest)
+end
+
+local tasks = {
+    ["Task_Rand1"] = {
+        ["x"] = 1,
+        ["y"] = 1,
+        ["paused"] = false
+    },
+    ["Task_Rand2"] = {
+        ["x"] = w,
+        ["y"] = 1,
+        ["paused"] = false
+    },
+    ["Task_Rand3"] = {
+        ["x"] = 1,
+        ["y"] = h,
+        ["paused"] = false
+    },
+    ["Task_Rand4"] = {
+        ["x"] = w,
+        ["y"] = h,
+        ["paused"] = false
+    },
+    ["Task_Rand_Center"] = {
+        ["x"] = cenX,
+        ["y"] = cenY,
+        ["paused"] = false
+    }
+}
+
+local function grab()
+    local running, evt = true, {}
+    while running do
+        evt = {os.pullEvent()}
+
+        if evt[1] == "key" and evt[2] == keys.down then
+            tManager:remove("Task_Rand_Center")
+            term.setCursorPos(cenX, cenY)
+            term.write(" ")
+        elseif evt[1] == "key" and evt[2] == keys.up then
+            tManager:add("Task_Rand_Center", random, cenX, cenY, 0.5)
+        elseif evt[1] == "key" and evt[2] == keys.enter then
+            local msg = tManager:current()
+            term.setCursorPos(cenX - (msg:len() / 2), cenY - 1)
+            term.clearLine()
+            term.write(msg)            
+        elseif evt[1] == "mouse_click" and evt[3] > 1 and evt[3] < w - 1 and evt[3] ~= cenX and evt[4] > 1 and evt[4] < h - 1 and evt[4] ~= cenY then
+            color = (2 ^ math.random(0, 15))
+        elseif evt[1] == "mouse_click" and evt[3] == tasks.Task_Rand1.x and evt[4] == tasks.Task_Rand1.y then
+            if not tasks.Task_Rand1.paused then
+                tManager:pause("Task_Rand1")
+                tasks.Task_Rand1.paused = true
+            else
+                tManager:resume("Task_Rand1")
+                tasks.Task_Rand1.paused = false
+            end
+            term.setCursorPos(1, 2)
+            term.clearLine()
+            term.write(tManager:status("Task_Rand1"))
+            term.setCursorPos(1, 3)
+            term.clearLine()
+            term.write(tManager:check("Task_Rand1"))
+        elseif evt[1] == "mouse_click" and evt[3] == tasks.Task_Rand2.x and evt[4] == tasks.Task_Rand2.y then
+            if not tasks.Task_Rand2.paused then
+                tManager:pause("Task_Rand2")
+                tasks.Task_Rand2.paused = true
+            else
+                tManager:resume("Task_Rand2")
+                tasks.Task_Rand2.paused = false
+            end
+            term.setCursorPos(1, 2)
+            term.clearLine()
+            term.write(tManager:status("Task_Rand2"))
+            term.setCursorPos(1, 3)
+            term.clearLine()
+            term.write(tManager:check("Task_Rand2"))
+        elseif evt[1] == "mouse_click" and evt[3] == tasks.Task_Rand3.x and evt[4] == tasks.Task_Rand3.y then
+            if not tasks.Task_Rand3.paused then
+                tManager:pause("Task_Rand3")
+                tasks.Task_Rand3.paused = true
+            else
+                tManager:resume("Task_Rand3")
+                tasks.Task_Rand3.paused = false
+            end
+            term.setCursorPos(1, 2)
+            term.clearLine()
+            term.write(tManager:status("Task_Rand3"))
+            term.setCursorPos(1, 3)
+            term.clearLine()
+            term.write(tManager:check("Task_Rand3"))
+        elseif evt[1] == "mouse_click" and evt[3] == tasks.Task_Rand4.x and evt[4] == tasks.Task_Rand4.y then
+            if not tasks.Task_Rand4.paused then
+                tManager:pause("Task_Rand4")
+                tasks.Task_Rand4.paused = true
+            else
+                tManager:resume("Task_Rand4")
+                tasks.Task_Rand4.paused = false
+            end
+            term.setCursorPos(1, 2)
+            term.clearLine()
+            term.write(tManager:status("Task_Rand4"))
+            term.setCursorPos(1, 3)
+            term.clearLine()
+            term.write(tManager:check("Task_Rand4"))
+        elseif evt[1] == "mouse_click" and evt[3] == tasks.Task_Rand_Center.x and evt[4] == tasks.Task_Rand_Center.y then
+            if not tasks.Task_Rand_Center.paused then
+                tManager:pause("Task_Rand_Center")
+                tasks.Task_Rand_Center.paused = true
+            else
+                tManager:resume("Task_Rand_Center")
+                tasks.Task_Rand_Center.paused = false
+            end
+            term.setCursorPos(1, 2)
+            term.clearLine()
+            term.write(tManager:status("Task_Rand_Center"))
+            term.setCursorPos(1, 3)
+            term.clearLine()
+            term.write(tManager:check("Task_Rand_Center"))
+        elseif evt[1] == "key" and evt[2] == keys["end"] then
+            running = false
+            tManager:stop()
+        end
+    end
+end
+
+tManager:add("Code: <Get Key>", grab)
+
+-- $ Adding Tasks:
+tManager:add("Task_Rand1", random, 1, 1, 0.1)
+tManager:add("Task_Rand2", random, w, 1, 0.2)
+tManager:add("Task_Rand3", random, 1, h, 0.3)
+tManager:add("Task_Rand4", random, w, h, 0.4)
+tManager:add("Task_Rand_Center", random, cenX, cenY, 0.5)
+
+-- # Add/Remove Task:
+-- Press Up to Add Center Random Character.
+-- Press Down to Remove Center Random Character.
+
+-- # Pause Task:
+-- Click a "crazy character" to pause task.
+
+-- # Resume Task:
+-- Click a "crazy character" to resume task.
+
+-- # Status of Task:
+-- Click a "crazy character" to check on status.
+
+-- # Checkup on Task:
+-- Click a "crazy character" to check if paused.
+
+-- # Current Task:
+-- Press "Enter" to see current task.
+
+-- # Start Environment:
+tManager:start()
+
+-- # Stop Environment:
+-- Press "End" to stop the running environment.
+
+-- # Run Environment:
+tManager:run()
+
+-- # Debug Environment:
+tManager:debug()
+term.setCursorPos(1, h)
+
+-- End of Document

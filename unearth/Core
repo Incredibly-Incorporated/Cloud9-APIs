@@ -14,35 +14,75 @@ checked by terminals that have automatic updates
 enabled. 
 --]]
 
+-- # Establish Reference for Assests in Global Environment:
+_G.unearth = {}
+-- $$ Check Notes...
+
 -- # Program API Directory Files:
 local APIS = {
-    ["BUTTON"]      = "unearth/apis/Button",
-    ["CRAFT"]       = "unearth/apis/Craft",
-    ["DEBUGGER"]    = "unearth/apis/Debugger",
-    ["ENVIRONMENT"] = "unearth/apis/Environment",
-    ["SCREEN"]      = "unearth/apis/Screen",
-    ["TEXT"]        = "unearth/apis/Text",
-    ["WINDOW"]      = "unearth/apis/Window" 
+    ["BUTTON"]      = "Cloud9-APIs/Button",
+    ["CRAFT"]       = "Cloud9-APIs/Craft",
+    ["DEBUGGER"]    = "Cloud9-APIs/Debugger",
+    ["ENVIRONMENT"] = "Cloud9-APIs/Environment",
+    ["SCREEN"]      = "Cloud9-APIs/Screen",
+    ["TEXT"]        = "Cloud9-APIs/Text",
+    ["WINDOW"]      = "Cloud9-APIs/Window" 
 }
+
+local ASSESTS = {
+    ["WINDOWS"] = "Cloud9-APIs/unearth/assests/unearth_windows"
+}
+
+local w, h = term.getSize()
+local line = ""
+for i = 1, w do
+    line = line.."-"
+end
 
 -- # Functions for Loading & Unloading APIs into/from Environment:
 local function LOAD_APIS(doPrint)
+    term.setTextColor(colors.lime)
     for ID, path in pairs(APIS) do
         if not os.loadAPI(path) then
-            error("\n[API: "..path.."]\nStatus: <Error>\n---", 2)
+            error("\n[API: "..path.."]\nStatus: <Error>\n"..line, 2)
         end
         if doPrint then
-            print("[API: "..path.."]\nStatus: <Loaded>\n---")
+            print("[API: "..path.."]\nStatus: <Loaded>\n"..line)
+            sleep(0.05)
+        end
+    end
+end
+
+local function LOAD_ASSESTS(doPrint)
+    term.setTextColor(colors.lime)
+    for ID, path in pairs(ASSESTS) do
+        if not os.loadAPI(path) then
+            error("\n[ASSEST: "..path.."]\nStatus: <Error>\n"..line, 2)
+        end
+        if doPrint then
+            print("[API: "..path.."]\nStatus: <Loaded>\n"..line)
             sleep(0.05)
         end
     end
 end
 
 local function UNLOAD_APIS(doPrint)
+    term.setTextColor(colors.lime)
     for ID, path in pairs(APIS) do
         os.unloadAPI(path)
         if doPrint then
-            print("[API: "..path.."]\nStatus: <Unloaded>\n---")
+            print("[API: "..path.."]\nStatus: <Unloaded>\n"..line)
+            sleep(0.05)
+        end
+    end
+end
+
+local function UNLOAD_ASSESTS(doPrint)
+    term.setTextColor(colors.lime)
+    for ID, path in pairs(ASSESTS) do
+        os.unloadAPI(path)
+        if doPrint then
+            print("[API: "..path.."]\nStatus: <Unloaded>\n"..line)
             sleep(0.05)
         end
     end
@@ -53,25 +93,27 @@ if not C9 then
 end
 
 -- # Local Program Variables:
-local w, h = term.getSize()
-
 local environment = Environment.new()
-local term = Screen.new()
+unearth_term = Screen.new()
+_G.unearth.unearth_term = unearth_term
 
 local terminate = false
 local editting = false
 local open_menu = false
 
 -- # Screen Modules:
-local main_screen = term:add(1, 2, w, h - 2, colors.black, colors.gray, 1)
-local edit_screen = term:add(1, 2, w, h - 2, colors.black, colors.white, 3, true)
-local console_screen = term:add(1, 2, w - 1, h - 2, colors.lime, colors.black, 1, true)
-local bottom_bar = term:add(1, h, w, 1, colors.black, colors.lightGray, 2)
-local top_bar = term:add(1, 1, w, 1, colors.white, colors.blue, 2)
+local main_screen = unearth_term:add(1, 2, w, h - 2, colors.black, colors.gray, 1)
+local edit_screen = unearth_term:add(1, 2, w, h - 2, colors.black, colors.white, 3, true)
+local console_screen = unearth_term:add(1, 2, w - 1, h - 2, colors.lime, colors.black, 1, true)
+local bottom_bar = unearth_term:add(1, h, w, 1, colors.black, colors.lightGray, 2)
+local top_bar = unearth_term:add(1, 1, w, 1, colors.white, colors.blue, 2)
 
 -- # Local Screen Tracers:
 local current_screen = main_screen
 local previous_screen = current_screen
+
+-- # Load Window Assests After Screen Definitions:
+LOAD_ASSESTS(true)
 
 -- # Main Button Modules:
 local button_close = Button.new({
@@ -91,15 +133,17 @@ local button_file = Button.new({
     ["yPos"] = 1,
     ["foreground"] = colors.white,
     ["background"] = colors.blue,
+    ["tFlash"] = colors.lightGray,
     ["screen"] = top_bar
 })
 
-local button_turtle = Button.new({
+button_turtle = Button.new({
     ["text"] = "[Turtle]",
     ["xPos"] = 8,
     ["yPos"] = 1,
     ["foreground"] = colors.white,
     ["background"] = colors.blue,
+    ["tFlash"] = colors.lightGray,
     ["screen"] = top_bar
 })
 
@@ -109,6 +153,7 @@ local button_console = Button.new({
     ["yPos"] = 1,
     ["foreground"] = colors.black,
     ["background"] = colors.lightGray,
+    ["tFlash"] = colors.gray,
     ["screen"] = bottom_bar
 })
 
@@ -199,18 +244,18 @@ local loaded_profile = profiles[appdata.last_profile]
 
 -- * Startup Definitions:
 -- # Parent Clearing:
-term:setBackgroundColor(colors.black)
-term:setTextColor(colors.white)
-term:clear()
+unearth_term:setBackgroundColor(colors.black)
+unearth_term:setTextColor(colors.white)
+unearth_term:clear()
 
 -- # Main Screen Clearing:
-term.clear(main_screen)
+unearth_term.clear(main_screen)
 
 -- # Top Bar Clearing:
-term.clear(top_bar)
+unearth_term.clear(top_bar)
 
 -- # Bottom Bar Clearing:
-term.clear(bottom_bar)
+unearth_term.clear(bottom_bar)
 
 -- # Main Button Displays:
 button_close:display()
@@ -246,7 +291,7 @@ function MODULE_MAIN_SCREEN()
     while true do
         local event = os.pullEvent()
         if event == "UNEARTH_PROFILE_UPDATE" or event == "UPDATE_PROFILE_VARIABLES" or event == "turtle_update" then
-            term.clear(main_screen)
+            unearth_term.clear(main_screen)
 
             -- # Display Current Profile:
             Text.display({
@@ -277,10 +322,10 @@ function MODULE_MAIN_SCREEN()
                 line = line..string.char(183)
             end
 
-            term.setTextColor(main_screen, colors.white)
+            unearth_term.setTextColor(main_screen, colors.white)
             for i = 3, main_screen.height do
-                term.setCursorPos(main_screen, 26, i)
-                term.write(main_screen, string.char(183))
+                unearth_term.setCursorPos(main_screen, 26, i)
+                unearth_term.write(main_screen, string.char(183))
             end
 
             Text.display({
@@ -371,6 +416,32 @@ end
 
 --[[
     >>>
+        CALCULATOR
+        MODULE
+    <<<
+]]
+
+local function MODULE_CALCULATOR()
+    -- # Event Handler:
+    while true do
+        local event, p1, p2, p3 = os.pullEvent()
+
+        if event == "UNEARTH_OPEN_NUMBERPAD" then
+            unearth_windows.calc_window:run(unearth_windows.display_numberpad)
+        end
+        unearth_windows.calc_window:move(event, p2, p3, 
+            function(startX, startY, endX, endY) 
+                if startY > 1 and endY < h then
+                    return true 
+                else
+                    return false
+                end
+            end)
+    end
+end
+
+--[[
+    >>>
         EDIT PROFILE
         MODULE
     <<<
@@ -396,7 +467,7 @@ function MODULE_EDIT_PROFILE()
         ["yPos"] = 3,
         ["foreground"] = colors.black,
         ["background"] = colors.white,
-        ["bFlash"] = colors.lightGray,
+        ["tFlash"] = colors.lightGray,
         ["screen"] = edit_screen
     })
 
@@ -406,7 +477,7 @@ function MODULE_EDIT_PROFILE()
         ["yPos"] = 4,
         ["foreground"] = colors.black,
         ["background"] = colors.white,
-        ["bFlash"] = colors.lightGray,
+        ["tFlash"] = colors.lightGray,
         ["screen"] = edit_screen
     })
 
@@ -416,7 +487,7 @@ function MODULE_EDIT_PROFILE()
         ["yPos"] = 5,
         ["foreground"] = colors.black,
         ["background"] = colors.white,
-        ["bFlash"] = colors.lightGray,
+        ["tFlash"] = colors.lightGray,
         ["screen"] = edit_screen
     })
 
@@ -426,7 +497,7 @@ function MODULE_EDIT_PROFILE()
         ["yPos"] = 6,
         ["foreground"] = colors.black,
         ["background"] = colors.white,
-        ["bFlash"] = colors.lightGray,
+        ["tFlash"] = colors.lightGray,
         ["screen"] = edit_screen
     })
 
@@ -436,7 +507,7 @@ function MODULE_EDIT_PROFILE()
         ["yPos"] = 7,
         ["foreground"] = colors.black,
         ["background"] = colors.white,
-        ["bFlash"] = colors.lightGray,
+        ["tFlash"] = colors.lightGray,
         ["screen"] = edit_screen
     })
 
@@ -446,7 +517,7 @@ function MODULE_EDIT_PROFILE()
         ["yPos"] = 8,
         ["foreground"] = colors.black,
         ["background"] = colors.white,
-        ["bFlash"] = colors.lightGray,
+        ["tFlash"] = colors.lightGray,
         ["screen"] = edit_screen
     })
 
@@ -456,7 +527,7 @@ function MODULE_EDIT_PROFILE()
         ["yPos"] = 9,
         ["foreground"] = colors.black,
         ["background"] = colors.white,
-        ["bFlash"] = colors.lightGray,
+        ["tFlash"] = colors.lightGray,
         ["screen"] = edit_screen
     })
 
@@ -466,7 +537,7 @@ function MODULE_EDIT_PROFILE()
         ["yPos"] = 10,
         ["foreground"] = colors.black,
         ["background"] = colors.white,
-        ["bFlash"] = colors.lightGray,
+        ["tFlash"] = colors.lightGray,
         ["screen"] = edit_screen
     })
 
@@ -476,16 +547,31 @@ function MODULE_EDIT_PROFILE()
         ["yPos"] = 11,
         ["foreground"] = colors.black,
         ["background"] = colors.white,
-        ["bFlash"] = colors.lightGray,
+        ["tFlash"] = colors.lightGray,
         ["screen"] = edit_screen
     })
+
+    -- # Local Module Variables:
+    local lock = "" 
+    local prev_file = button_file.foreground
+    local prev_turtle = button_turtle.foreground
+    local prev_console = button_console.foreground
 
     -- # Event Handler:
     while true do
         local event, p1, p2, p3 = os.pullEvent()
-        if open_menu then
-            -- >> Skip...
-        elseif event == "START_EDITTING" and editting then
+
+        if event == "START_EDITTING" and editting then
+            -- # Gray Out Inapplicable Buttons:
+            button_file.foreground = colors.gray
+            button_file:display()
+
+            button_turtle.foreground = colors.gray
+            button_turtle:display()
+
+            button_console.foreground = colors.gray
+            button_console:display()
+
             -- # Display Current Profile:
             Text.display({
                 ["text"] = {
@@ -515,10 +601,10 @@ function MODULE_EDIT_PROFILE()
                 line = line..string.char(183)
             end
 
-            term.setTextColor(edit_screen, colors.black)
+            unearth_term.setTextColor(edit_screen, colors.black)
             for i = 3, edit_screen.height do
-                term.setCursorPos(edit_screen, 31, i)
-                term.write(edit_screen, string.char(183))
+                unearth_term.setCursorPos(edit_screen, 31, i)
+                unearth_term.write(edit_screen, string.char(183))
             end
 
             Text.display({
@@ -551,13 +637,60 @@ function MODULE_EDIT_PROFILE()
 
             -- # Queue Update Event:
             os.queueEvent("UPDATE_PROFILE_VARIABLES")
-        elseif button_width:call(event, p2, p3) and editting then
-            -- $ Bring Up Calculator Window Here...
-            -- $ Last Dev Here: Begin a Window test here...
-        elseif button_height:call(event, p2, p3) and editting then
-            -- $ Bring Up Calculator Window Here...
-        elseif button_length:call(event, p2, p3) and editting then
-            -- $ Bring Up Calculator Window Here...
+        elseif button_width:call(event, p2, p3) and editting and lock == "" then
+            -- # Load Numberpad Window:
+            os.queueEvent("UNEARTH_OPEN_NUMBERPAD", "width")
+            
+            -- # Locking Mechanism to Avoid Multiple Numberpad Windows:
+            lock = "width"
+        elseif event == "UNEARTH_FINISHED_CALCULATING" and p1 == "width" and editting and lock == "width" then
+            if type(p2) == "number" then
+                loaded_profile.width = tonumber(p2)
+            elseif p2 == "" then
+                loaded_profile.width = loaded_profile.width
+            else
+                loaded_profile.width = p2
+            end 
+
+            -- # Queue Update Event & Lock:
+            os.queueEvent("UPDATE_PROFILE_VARIABLES")
+            lock = ""
+        elseif button_height:call(event, p2, p3) and editting and lock == "" then
+            -- # Load Numberpad Window:
+            os.queueEvent("UNEARTH_OPEN_NUMBERPAD", "height")
+
+            -- # Locking Mechanism to Avoid Multiple Numberpad Windows:
+            lock = "height"
+        elseif event == "UNEARTH_FINISHED_CALCULATING" and p1 == "height" and editting and lock == "height" then
+            if type(p2) == "number" then
+                loaded_profile.height = tonumber(p2)
+            elseif p2 == "" then
+                loaded_profile.height = loaded_profile.height
+            else
+                loaded_profile.height = p2
+            end
+
+            -- # Queue Update Event & Lock:
+            os.queueEvent("UPDATE_PROFILE_VARIABLES")
+            lock = ""
+        elseif button_length:call(event, p2, p3) and editting and lock == "" then
+            -- # Load Numberpad Window:
+            os.queueEvent("UNEARTH_OPEN_NUMBERPAD", "length")
+
+            -- # Locking Mechanism to Avoid Multiple Numberpad Windows:
+            lock = "length"
+        elseif event == "UNEARTH_FINISHED_CALCULATING" and p1 == "length" and editting and lock == "length" then
+            if type(p2) == "number" then
+                loaded_profile.length = tonumber(p2)
+            elseif p2 == "" then
+                loaded_profile.length = loaded_profile.length
+            else
+                loaded_profile.length = p2
+            end
+
+            -- # Queue Update Event & Lock:
+            os.queueEvent("UPDATE_PROFILE_VARIABLES")
+            lock = ""
         elseif button_place_torch:call(event, p2, p3) and editting then
             -- # Change Variable:
             if loaded_profile.place_torch == true then
@@ -568,8 +701,24 @@ function MODULE_EDIT_PROFILE()
 
             -- # Queue Update Event:
             os.queueEvent("UPDATE_PROFILE_VARIABLES")
-        elseif button_torch_distance:call(event, p2, p3) and editting then
-            -- $ Bring Up Calculator Window Here...
+        elseif button_torch_distance:call(event, p2, p3) and editting and lock == "" then
+            -- # Load Numberpad Window:
+            os.queueEvent("UNEARTH_OPEN_NUMBERPAD", "torch_distance")
+
+            -- # Locking Mechanism to Avoid Multiple Numberpad Windows:
+            lock = "torch_distance"
+        elseif event == "UNEARTH_FINISHED_CALCULATING" and p1 == "torch_distance" and editting and lock == "torch_distance" then
+            if type(p2) == "number" then
+                loaded_profile.torch_distance = tonumber(p2)
+            elseif p2 == "" then
+                loaded_profile.torch_distance = loaded_profile.torch_distance
+            else
+                loaded_profile.torch_distance = p2
+            end
+
+            -- # Queue Update Event & Lock:
+            os.queueEvent("UPDATE_PROFILE_VARIABLES")
+            lock = ""
         elseif button_ender_chest_dump:call(event, p2, p3) and editting then
             -- # Change Variable:
             if loaded_profile.ender_chest_dump == true then
@@ -602,7 +751,7 @@ function MODULE_EDIT_PROFILE()
             os.queueEvent("UPDATE_PROFILE_VARIABLES")
         elseif event == "UPDATE_PROFILE_VARIABLES" and editting then
             -- # Display Profile Variables:
-            term.clearLine(edit_screen, false, false, 3)
+            unearth_term.clearLine(edit_screen, false, false, 3)
             Text.display({
                 ["text"] = loaded_profile.direction,
                 ["foreground"] = colors.blue,
@@ -612,7 +761,7 @@ function MODULE_EDIT_PROFILE()
                 ["wrapper"] = "concat",
                 ["screen"] = edit_screen
             })
-            term.clearLine(edit_screen, false, false, 4)
+            unearth_term.clearLine(edit_screen, false, false, 4)
             Text.display({
                 ["text"] = tostring(loaded_profile.width),
                 ["foreground"] = colors.orange,
@@ -622,7 +771,7 @@ function MODULE_EDIT_PROFILE()
                 ["wrapper"] = "concat",
                 ["screen"] = edit_screen
             })
-            term.clearLine(edit_screen, false, false, 5)
+            unearth_term.clearLine(edit_screen, false, false, 5)
             Text.display({
                 ["text"] = tostring(loaded_profile.height),
                 ["foreground"] = colors.orange,
@@ -632,7 +781,7 @@ function MODULE_EDIT_PROFILE()
                 ["wrapper"] = "concat",
                 ["screen"] = edit_screen
             })
-            term.clearLine(edit_screen, false, false, 6)
+            unearth_term.clearLine(edit_screen, false, false, 6)
             Text.display({
                 ["text"] = tostring(loaded_profile.length),
                 ["foreground"] = colors.orange,
@@ -642,7 +791,7 @@ function MODULE_EDIT_PROFILE()
                 ["wrapper"] = "concat",
                 ["screen"] = edit_screen
             })
-            term.clearLine(edit_screen, false, false, 7)
+            unearth_term.clearLine(edit_screen, false, false, 7)
             Text.display({
                 ["text"] = wrap(loaded_profile.place_torch),
                 ["foreground"] = color(loaded_profile.place_torch),
@@ -652,7 +801,7 @@ function MODULE_EDIT_PROFILE()
                 ["wrapper"] = "concat",
                 ["screen"] = edit_screen
             })
-            term.clearLine(edit_screen, false, false, 8)
+            unearth_term.clearLine(edit_screen, false, false, 8)
             Text.display({
                 ["text"] = tostring(loaded_profile.torch_distance),
                 ["foreground"] = colors.orange,
@@ -662,7 +811,7 @@ function MODULE_EDIT_PROFILE()
                 ["wrapper"] = "concat",
                 ["screen"] = edit_screen
             })
-            term.clearLine(edit_screen, false, false, 9)
+            unearth_term.clearLine(edit_screen, false, false, 9)
             Text.display({
                 ["text"] = wrap(loaded_profile.ender_chest_dump),
                 ["foreground"] = color(loaded_profile.ender_chest_dump),
@@ -672,7 +821,7 @@ function MODULE_EDIT_PROFILE()
                 ["wrapper"] = "concat",
                 ["screen"] = edit_screen
             })
-            term.clearLine(edit_screen, false, false, 10)
+            unearth_term.clearLine(edit_screen, false, false, 10)
             Text.display({
                 ["text"] = wrap(loaded_profile.ender_chest_fuel),
                 ["foreground"] = color(loaded_profile.ender_chest_fuel),
@@ -682,7 +831,7 @@ function MODULE_EDIT_PROFILE()
                 ["wrapper"] = "concat",
                 ["screen"] = edit_screen
             })
-            term.clearLine(edit_screen, false, false, 11)
+            unearth_term.clearLine(edit_screen, false, false, 11)
             Text.display({
                 ["text"] = wrap(loaded_profile.ender_chest_torch),
                 ["foreground"] = color(loaded_profile.ender_chest_torch),
@@ -692,16 +841,26 @@ function MODULE_EDIT_PROFILE()
                 ["wrapper"] = "concat",
                 ["screen"] = edit_screen
             })
-            term.setTextColor(edit_screen, colors.black)
+            unearth_term.setTextColor(edit_screen, colors.black)
             for i = 3, edit_screen.height do
-                term.setCursorPos(edit_screen, 31, i)
-                term.write(edit_screen, string.char(183))
+                unearth_term.setCursorPos(edit_screen, 31, i)
+                unearth_term.write(edit_screen, string.char(183))
             end
         elseif button_done_editting:call(event, p2, p3) and editting then
+            -- # Update Grayed Out Buttons:
+            button_file.foreground = prev_file
+            button_file:display()
+
+            button_turtle.foreground = prev_turtle
+            button_turtle:display()
+
+            button_console.foreground = prev_console
+            button_console:display()
+
             -- # Update Screens:
-            term.visible(edit_screen, false)
-            term.visible(main_screen, true)
-            term:refresh(true)
+            unearth_term.visible(edit_screen, false)
+            unearth_term.visible(main_screen, true)
+            unearth_term:refresh(true)
 
             -- # Update Screen Tracers:
             current_screen = main_screen
@@ -723,7 +882,7 @@ end
 function MODULE_FILE_SELECTION()
     -- # Local Module Variables:
     local isVisible = false
-    local menu_file = term:add(1, 2, 15, 5, colors.black, colors.lightGray, 3, true)
+    local menu_file = unearth_term:add(1, 2, 15, 5, colors.black, colors.lightGray, 3, true)
 
     -- # Local Module Buttons:
     local button_load_profile = Button.new({
@@ -769,14 +928,16 @@ function MODULE_FILE_SELECTION()
     -- # Event Handler:
     while true do
         local event, p1, p2, p3 = os.pullEvent()
-        if button_file:call(event, p2, p3) and not isVisible then
+        if editting then
+            -- > Skip...
+        elseif button_file:call(event, p2, p3) and not isVisible then
             -- $ Update Event Variables:
             isVisible = true
             open_menu = true
             
             -- $ Make Menu Screen Visible:
-            term.visible(menu_file, true)
-            term:refresh(true)
+            unearth_term.visible(menu_file, true)
+            unearth_term:refresh(true)
 
             -- $ Make Menu Buttons Visible:
             button_load_profile:display()
@@ -786,8 +947,8 @@ function MODULE_FILE_SELECTION()
 
             -- $ Display Seperator Bar:
             for i = 1, menu_file.width do
-                term.setCursorPos(menu_file, i, 4)
-                term.write(menu_file, "-")
+                unearth_term.setCursorPos(menu_file, i, 4)
+                unearth_term.write(menu_file, "-")
             end
         elseif button_load_profile:call(event, p2, p3) and isVisible then
             -- $ Load Profile Module Here...
@@ -795,10 +956,10 @@ function MODULE_FILE_SELECTION()
             -- $ Save Profile Module Here...
         elseif button_edit_profile:call(event, p2, p3) and isVisible then
             -- # Update Screens:
-            term.visible(current_screen, false)
-            term.visible(menu_file, false)
-            term.visible(edit_screen, true)
-            term:refresh(true)
+            unearth_term.visible(current_screen, false)
+            unearth_term.visible(menu_file, false)
+            unearth_term.visible(edit_screen, true)
+            unearth_term:refresh(true)
 
             -- # Update Screen Tracers:
             previous_screen = current_screen
@@ -817,8 +978,8 @@ function MODULE_FILE_SELECTION()
         elseif event == "mouse_click" and isVisible then 
             if p2 < menu_file.startX or p3 < menu_file.startY or p2 > menu_file.endX or p3 > menu_file.endY then
                 isVisible = false
-                term.visible(menu_file, false)
-                term:refresh(true)
+                unearth_term.visible(menu_file, false)
+                unearth_term:refresh(true)
             end
         end
     end
@@ -834,7 +995,7 @@ end
 function MODULE_TURTLE_SELECTION()
     -- # Local Module Variables:
     local isVisible = false
-    local menu_turtle = term:add(8, 2, 15, 5, colors.black, colors.lightGray, 3, true)
+    local menu_turtle = unearth_term:add(8, 2, 15, 5, colors.black, colors.lightGray, 3, true)
 
     -- # Local Module Buttons:
     local button_start = Button.new({
@@ -880,14 +1041,16 @@ function MODULE_TURTLE_SELECTION()
     -- # Event Handler:
     while true do
         local event, p1, p2, p3 = os.pullEvent()
-        if button_turtle:call(event, p2, p3) and not isVisible then
+        if editting then
+            -- > Skip...
+        elseif button_turtle:call(event, p2, p3) and not isVisible then
             -- $ Update Event Variables:
             isVisible = true
             open_menu = true
             
             -- $ Make Menu Screen Visible:
-            term.visible(menu_turtle, true)
-            term:refresh(true)
+            unearth_term.visible(menu_turtle, true)
+            unearth_term:refresh(true)
 
             -- $ Make Menu Buttons Visible:
             button_start:display()
@@ -897,8 +1060,8 @@ function MODULE_TURTLE_SELECTION()
 
             -- $ Display Seperator Bar:
             for i = 1, menu_turtle.width do
-                term.setCursorPos(menu_turtle, i, 4)
-                term.write(menu_turtle, "-")
+                unearth_term.setCursorPos(menu_turtle, i, 4)
+                unearth_term.write(menu_turtle, "-")
             end
         elseif button_start:call(event, p2, p3) and isVisible then
             -- $ Start Digging if not Already Started...
@@ -912,8 +1075,8 @@ function MODULE_TURTLE_SELECTION()
             if p2 < menu_turtle.startX or p3 < menu_turtle.startY or p2 > menu_turtle.endX or p3 > menu_turtle.endY then
                 isVisible = false
                 open_menu = false
-                term.visible(menu_turtle, false)
-                term:refresh(true)
+                unearth_term.visible(menu_turtle, false)
+                unearth_term:refresh(true)
             end
         end
     end
@@ -929,7 +1092,7 @@ end
 function MODULE_CONSOLE()
     -- # Local Module Variables:
     local isVisible = false
-    local scrollbar = term:add(w, 2, 1, h - 2, colors.white, colors.black, 2, true)
+    local scrollbar = unearth_term:add(w, 2, 1, h - 2, colors.white, colors.black, 2, true)
 
     -- # Local Scrollbar Arrow Buttons:
     local up_arrow = Button.new({
@@ -964,8 +1127,8 @@ function MODULE_CONSOLE()
 
     -- # Draw Vertical Scrolling Bar:
     for i = 2, h - 3 do
-        term.setCursorPos(scrollbar, 1, i)
-        term.write(scrollbar, "|")
+        unearth_term.setCursorPos(scrollbar, 1, i)
+        unearth_term.write(scrollbar, "|")
     end
 
     -- # Event Handler:
@@ -980,22 +1143,24 @@ function MODULE_CONSOLE()
                 return false
             end
         end)
-        if move then
+        if move and not editting then
             if y < console_screen.curY then
-                term.scroll(console_screen, -y)
+                unearth_term.scroll(console_screen, -y)
             end  
         end
 
-        if button_console:call(event, p2, p3) then
+        if editting then
+            -- > Skip...
+        elseif button_console:call(event, p2, p3) then
             if not isVisible then
                 -- $ Update Visibility of Console:
                 isVisible = true
     
                 -- $ Make Screen Adjustments:
-                term.visible(current_screen, false)
-                term.visible(console_screen, true)
-                term.visible(scrollbar, true)
-                term:refresh(true)
+                unearth_term.visible(current_screen, false)
+                unearth_term.visible(console_screen, true)
+                unearth_term.visible(scrollbar, true)
+                unearth_term:refresh(true)
 
                 -- $ Update Screen Tracers:
                 previous_screen = current_screen
@@ -1010,19 +1175,19 @@ function MODULE_CONSOLE()
                 isVisible = false
 
                 -- $ Make Screen Adjustments:
-                term.visible(previous_screen, true)
-                term.visible(console_screen, false)
-                term.visible(scrollbar, false)
-                term:refresh(true)
+                unearth_term.visible(previous_screen, true)
+                unearth_term.visible(console_screen, false)
+                unearth_term.visible(scrollbar, false)
+                unearth_term:refresh(true)
 
                 -- $ Update Screen Tracers:
                 current_screen = previous_screen
                 previous_screen = console_screen
             end
         elseif down_arrow:call(event, p2, p3) and isVisible then
-            term.scroll(console_screen, 1)
+            unearth_term.scroll(console_screen, 1)
         elseif up_arrow:call(event, p2, p3) and isVisible then
-            term.scroll(console_screen, -1)
+            unearth_term.scroll(console_screen, -1)
         elseif isVisible and current_screen ~= console_screen then
             -- $ Update Visibility of Console:
             isVisible = false
@@ -1043,13 +1208,14 @@ function MODULE_CLOCK()
         local time = textutils.formatTime(os.time(), false)
     
         -- # Print out Time:
-        term.setCursorPos(bottom_bar, w - time:len() + 1, 1)
-        term.write(bottom_bar, time)
+        unearth_term.setTextColor(bottom_bar, colors.black)
+        unearth_term.setCursorPos(bottom_bar, w - time:len() + 1, 1)
+        unearth_term.write(bottom_bar, time)
     
         -- # Check for Extended String:
         if time:len() == 7 then
-            term.setCursorPos(bottom_bar, w - time:len(), 1)
-            term.write(bottom_bar, " ")
+            unearth_term.setCursorPos(bottom_bar, w - time:len(), 1)
+            unearth_term.write(bottom_bar, " ")
         end
     end
 end
@@ -1084,6 +1250,8 @@ environment:add("MAIN_SCREEN", MODULE_MAIN_SCREEN)
 environment:add("EDIT_PROFILE", MODULE_EDIT_PROFILE)
 environment:add("FILE_SELECTION", MODULE_FILE_SELECTION)
 environment:add("TURTLE_SELECTION", MODULE_TURTLE_SELECTION)
+environment:add("CALCULATOR", MODULE_CALCULATOR)
+environment:add("NUMBERPAD", unearth_windows.MODULE_NUMBERPAD)
 environment:add("CONSOLE", MODULE_CONSOLE)
 environment:add("CLOCK", MODULE_CLOCK)
 environment:add("TERMINATION", MODULE_TERMINATION)
@@ -1095,8 +1263,10 @@ environment:run()
 if not C9 then
     if environment.errored then
         UNLOAD_APIS(false)
+        UNLOAD_ASSESTS(false)
     else
         UNLOAD_APIS(true)
+        UNLOAD_ASSESTS(true)
     end
 else
     sleep(1)

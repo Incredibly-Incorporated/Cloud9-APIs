@@ -591,6 +591,8 @@ function new(pars)
         ["text"] = pars.text,
         ["startX"] = pars.xPos,
         ["startY"] = pars.yPos - pars.yPad,
+        ["origiX"] = pars.xPos,
+        ["origiY"] = pars.yPos,
         ["endX"] = pars.xPos + width - fix,
         ["endY"] = pars.yPos + vertex + pars.yPad - hFix,
         ["xPad"] = pars.xPad,

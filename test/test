@@ -29,6 +29,7 @@ end
 -- $ Local Program Variables:
 local w, h = term.getSize()
 local terminate = false
+local number = ""
 
 -- $ Local Program Objects:
 local term = Screen.new()
@@ -113,7 +114,6 @@ local calc_window, calc_screen = Window.new({
 })
 
 -- $ Local Variables for Numberpad Window:
--- # Update Background of Screen:
 local pad_screen = calc_window:add_screen(calc_screen, calc_screen.startX, calc_screen.startY, calc_screen.width, 1, colors.black, colors.white, calc_screen.level + 1)
 
 -- # Build Numberpad Buttons:
@@ -258,6 +258,14 @@ local function MODULE_CALCULATOR()
     while true do
         local event, p1, p2, p3 = os.pullEvent()
 
+        calc_window:move(event, p2, p3, 
+            function(startX, startY, endX, endY) 
+                if startY > 1 and endY < h then
+                    return true 
+                else
+                    return false
+                end
+            end)
         if button_calculator:call(event, p2, p3) then
             if not visible then
                 calc_window:display(true)
@@ -268,16 +276,13 @@ local function MODULE_CALCULATOR()
             calc_window:run(calculator)
             os.queueEvent("NUMPAD_EVENT_CALL")
         elseif button_debug:call(event, p2, p3) then
-            term.debug(bottom_bar, "debugging/bottom_bar_debug/bottom_debug")
-            term.debug(calc_screen, "debugging/calc_screen_debug/calc_debug")
-            term:debug("debugging/term_debug/term_debug")
-            term.debug(top_bar, "debugging/top_bar_debug/top_debug")
+            term.debug(calc_screen)
         elseif button_refresh:call(event, p2, p3) then
             term.visible(calc_screen, false)
             term:refresh(true)
             term.visible(calc_screen, true)
-        elseif calc_window:move(event, p2, p3) then
-            -- Skip
+        elseif calc_window:check(event, p2, p3) == "win_closed" then
+            calc_window:display(false)
         end
     end
 end
@@ -290,11 +295,6 @@ end
 ]]
 
 local function MODULE_NUMBERPAD()
-    -- $$ Last Dev Here: Continue working on Number Pad Module, & move to Core
-    -- $$              > Figure out how to transfer text to be as smooth as button transfers when moving window...
-    -- # Local Module Variables:
-    local number = ""
-
     -- # Event Handler:
     while true do
         local event, p1, p2, p3 = os.pullEvent()
@@ -395,10 +395,6 @@ function MODULE_TERMINATION()
             terminate = true
         end
 
-        if e1 == "key" and e2 == keys.enter then
-
-        end
-
         if button_close:call(e1, e3, e4) then
             terminate = true
         end
@@ -418,5 +414,6 @@ environment:add("TERMINATE", MODULE_TERMINATION)
 
 -- $ Run Program:
 environment:run()
+return number
 
 -- End of Document

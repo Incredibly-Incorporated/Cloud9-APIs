@@ -41,7 +41,7 @@ column, row, or both.
 
 > Returns:
 @return: 'xPos', 'yPos'
-@info  : Returns the coord of the last character printed.
+@info  : Returns the coord of centered text based upon arguments.
 
 > Notes:
 This function utilizes a parameter table. In order
@@ -144,34 +144,36 @@ This function is used to write text to the screen
 in the most advanced way possible.
 
 > Parameter Table: {
-["Index"]      | TYPE         | <REQ/OPT>  | Information:
----------------+--------------+------------+-------------
-["text"]       | STRING/TABLE | <REQUIRED> | What we're writing.
-["foreground"] | COLOR/TABLE  | <OPTIONAL> | The font color of the text.
-["background"] | COLOR/TABLE  | <OPTIONAL> | The background color of the text.
-["startX"]     | NUMBER       | <OPTIONAL> | Where to place the text horizontally.
-["startY"]     | NUMBER       | <OPTIONAL> | Where to place the text vertically.
-["width"]      | NUMBER       | <OPTIONAL> | The width of your screen.
-["height"]     | NUMBER       | <OPTIONAL> | The height of your screen.
-["buffer"]     | BOOLEAN      | <OPTIONAL> | Whether or not to ignore height restrictions,
-               |              |            | and buffer text to the provided screen.
-["wrapper"]    | STRING       | <OPTIONAL> | Pass ['new line'] as an argument to add
-               |              |            | a new line when the width is met. Or,
-               |              |            | pass ['concat'] to insert a ... before
-               |              |            | the width border is met.
-["screen"]     | TABLE OBJECT | <OPTIONAL> | Add your screen object here if you have one.
-["centerX"]    | BOOLEAN      | <OPTIONAL> | Whether or not to center horizontally.
-["centerY"]    | BOOLEAN      | <OPTIONAL> | Whether or not to center vertically.
-["roundX"]     | STRING       | <OPTIONAL> | Pass ['ceil'] as an argument for
-               |              |            | rounding up, and pass ['floor'] 
-               |              |            | as an argument for rounding down.
-["roundY"]     | STRING       | <OPTIONAL> | Same as roundX.
-["display"]    | BOOLEAN      | <OPTIONAL> | Whether or not to display text. Use case is
-               |              |            | meant for determining what the last xPos, yPos
-               |              |            | of a print statement would be without actually
-               |              |            | printing the words. Ex: Button library.
-["debug"]      | BOOLEAN      | <OPTIONAL> | Whether or not to check if you have correct data.
----------------+--------------+------------+-------------
+["Index"]       | TYPE         | <REQ/OPT>  | Information:
+----------------+--------------+------------+-------------
+["text"]        | STRING/TABLE | <REQUIRED> | What we're writing.
+["foreground"]  | COLOR/TABLE  | <OPTIONAL> | The font color of the text.
+["background"]  | COLOR/TABLE  | <OPTIONAL> | The background color of the text.
+["startX"]      | NUMBER       | <OPTIONAL> | Where to place the text horizontally.
+["startY"]      | NUMBER       | <OPTIONAL> | Where to place the text vertically.
+["width"]       | NUMBER       | <OPTIONAL> | The width of your screen.
+["height"]      | NUMBER       | <OPTIONAL> | The height of your screen.
+["buffer"]      | BOOLEAN      | <OPTIONAL> | Whether or not to ignore height restrictions,
+                |              |            | and buffer text to the provided screen.
+["wrapper"]     | STRING       | <OPTIONAL> | Pass ['new line'] as an argument to add
+                |              |            | a new line when the width is met. Or,
+                |              |            | pass ['concat'] to insert a ... before
+                |              |            | the width border is met.
+["screen"]      | TABLE OBJECT | <OPTIONAL> | Add your screen object here if you have one.
+["override"]    | BOOLEAN      | <OPTIONAL> | Ignore screen levels. Only for screens only!
+["transparent"] | BOOLEAN      | <OPTIONAL> | Transparent writing. Only for screens! 
+["centerX"]     | BOOLEAN      | <OPTIONAL> | Whether or not to center horizontally.
+["centerY"]     | BOOLEAN      | <OPTIONAL> | Whether or not to center vertically.
+["roundX"]      | STRING       | <OPTIONAL> | Pass ['ceil'] as an argument for
+                |              |            | rounding up, and pass ['floor'] 
+                |              |            | as an argument for rounding down.
+["roundY"]      | STRING       | <OPTIONAL> | Same as roundX.
+["display"]     | BOOLEAN      | <OPTIONAL> | Whether or not to display text. Use case is
+                |              |            | meant for determining what the last xPos, yPos
+                |              |            | of a print statement would be without actually
+                |              |            | printing the words. Example in 'Button' API.
+["debug"]       | BOOLEAN      | <OPTIONAL> | Whether or not to check if you have correct data.
+----------------+--------------+------------+-------------
 }
 
 > Returns:
@@ -230,23 +232,25 @@ function display(data)
     end
 
     -- # Declaring Local Variables:
-    local w, h       = screen.getSize()
-    local xPos, yPos = 0, 0
-    local paragraph  = {}
-    local text       = data.text or "nil"
-    local foreground = data.foreground or screen.getTextColor()
-    local background = data.background or screen.getBackgroundColor()
-    local startX     = data.startX or 1
-    local startY     = data.startY or 0
-    local buffer     = data.buffer or false
-    local wrapper    = data.wrapper or "concat"
-    local centerX    = data.centerX or false
-    local centerY    = data.centerY or false
-    local roundX     = data.roundX or "ceil"
-    local roundY     = data.roundY or "floor"
-    local width      = data.width or w
-    local height     = data.height or h
-    local display    = data.display or true
+    local w, h        = screen.getSize()
+    local xPos, yPos  = 0, 0
+    local paragraph   = {}
+    local text        = data.text or "nil"
+    local foreground  = data.foreground or screen.getTextColor()
+    local background  = data.background or screen.getBackgroundColor()
+    local startX      = data.startX or 1
+    local startY      = data.startY or 0
+    local buffer      = data.buffer or false
+    local wrapper     = data.wrapper or "concat"
+    local override    = data.override or false
+    local transparent = data.transparent or false
+    local centerX     = data.centerX or false
+    local centerY     = data.centerY or false
+    local roundX      = data.roundX or "ceil"
+    local roundY      = data.roundY or "floor"
+    local width       = data.width or w
+    local height      = data.height or h
+    local display     = data.display or true
 
     if not data.debug then data.debug = true end
 
@@ -504,7 +508,7 @@ function display(data)
             screen.setCursorPos(paragraph[i]["xPos"], paragraph[i]["yPos"])
             screen.setTextColor(paragraph[i]["foreground"])
             screen.setBackgroundColor(paragraph[i]["background"])
-            screen.write(paragraph[i]["text"])
+            screen.write(paragraph[i]["text"], override, transparent)
         else
             break
         end

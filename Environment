@@ -12,7 +12,7 @@ inquiries.
 ]]
 
 --[[ENVIRONMENT VARIABLES]]--
-VERSION = "3.0.4"
+VERSION = "3.1.4"
 
 --[[LOCAL VARIABLES ZONE:]]--
 local functions = {}
@@ -137,11 +137,11 @@ This function is used to pause a task in the
 defined environment.
 
 > Parameters:
-<Parameter>   | TYPE           | Information:
---------------+----------------+-------------
-<environment> | TABLE OBJECT   | Your environment object.
-<name>        | STRING         | The 'string' name of your task for lookup.
---------------+----------------+-------------
+<Parameter>   | TYPE         | Information:
+--------------+--------------+-------------
+<environment> | TABLE OBJECT | Your environment object.
+<name>        | STRING       | The 'string' name of your task for lookup.
+--------------+--------------+-------------
 
 > Returns:
 @return: <nil>
@@ -173,11 +173,11 @@ This function is used to resume a task in the
 defined environment.
 
 > Parameters:
-<Parameter>   | TYPE           | Information:
---------------+----------------+-------------
-<environment> | TABLE OBJECT   | Your environment object.
-<name>        | STRING         | The 'string' name of your task for lookup.
---------------+----------------+-------------
+<Parameter>   | TYPE         | Information:
+--------------+--------------+-------------
+<environment> | TABLE OBJECT | Your environment object.
+<name>        | STRING       | The 'string' name of your task for lookup.
+--------------+--------------+-------------
 
 > Returns:
 @return: <nil>
@@ -399,6 +399,7 @@ you need to turn the key in order to start the car.
 <Parameter>   | TYPE           | Information:
 --------------+----------------+-------------
 <environment> | TABLE OBJECT   | Your environment object.
+<secure>      | BOOLEAN        | Whether or not to capture terminate events.
 --------------+----------------+-------------
 
 > Returns:
@@ -407,13 +408,19 @@ you need to turn the key in order to start the car.
 <>
 ]]
 
-functions.run = function(environment)
+functions.run = function(environment, secure)
     -- # Checking Environment:
     if type(environment) ~= "table" or not environment.isEnvironment then error("[environment] was not defined!", 2) end
 
     -- # Declaring Local Variables:
     local event, kill = {}, {}
-    local routine, args, ok, yielded = nil, nil, nil, nil
+    local routine, args, ok, yielded, pullEvent = nil, nil, nil, nil, nil
+
+    if not secure then
+        pullEvent = os.pullEvent
+    else
+        pullEvent = os.pullEventRaw
+    end
 
     -- # Code:
     if not environment.running then
@@ -494,7 +501,7 @@ functions.run = function(environment)
             end
         end
 
-        event = {os.pullEventRaw()}
+        event = {pullEvent()}
     end
 end
 

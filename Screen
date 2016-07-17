@@ -662,7 +662,7 @@ functions.write = function(screen, text, override, transparent)
     -- # Checking Local Variables:
     if override == "override" then override = true end
     if transparent == "transparent" then transparent = true end
-    if screen.transparent then transparent = true end
+    if transparent == nil and screen.transparent then transparent = true end
     if type(override) ~= "boolean" then override = false end
     if type(transparent) ~= "boolean" then transparent = false end
     if type(pixel) ~= "table" or not pixel["xPos"] and not pixel["yPos"] then
@@ -697,8 +697,8 @@ functions.write = function(screen, text, override, transparent)
                         ["yPos"] = y,
                         ["text"] = letter,
                         ["level"] = screen.level,
-                        ["foreground"] = tonumber(screen.foreground),
-                        ["background"] = tonumber(screen.background),
+                        ["foreground"] = screen.foreground,
+                        ["background"] = screen.background,
                         ["display"] = tostring(screen.display)    
                     }
                 end
@@ -716,9 +716,9 @@ functions.write = function(screen, text, override, transparent)
                         scp(sPixel["xPos"], sPixel["yPos"])
                         spit(letter)
 
-                        tPixel["foreground"] = tonumber(screen.foreground)
-                        tPixel["background"] = tonumber(screen.background)
-                        tPixel["level"] = tonumber(sPixel["level"])
+                        tPixel["foreground"] = screen.foreground
+                        tPixel["background"] = screen.background
+                        tPixel["level"] = sPixel["level"]
                         tPixel["text"] = letter
                         tPixel["screen"] = tostring(screen)
                     end
@@ -733,7 +733,7 @@ functions.write = function(screen, text, override, transparent)
                     stc(tPixel["foreground"]) 
                     scp(tPixel["xPos"], tPixel["yPos"])
                     spit(tPixel["text"])
-                else
+                elseif screen.isVisible then
                     scp(tPixel["xPos"], tPixel["yPos"])
                     spit(letter)   
                 end
@@ -757,9 +757,9 @@ functions.write = function(screen, text, override, transparent)
                     scp(pixel["xPos"], pixel["yPos"])
                     spit(pixel["text"])
                     
-                    tPixel["foreground"] = tonumber(pixel["foreground"])
-                    tPixel["background"] = tonumber(pixel["background"])
-                    tPixel["level"] = tonumber(pixel["level"])
+                    tPixel["foreground"] = pixel["foreground"]
+                    tPixel["background"] = pixel["background"]
+                    tPixel["level"] = pixel["level"]
                     tPixel["text"] = pixel["text"]
                     tPixel["screen"] = tostring(screen)
                 end
@@ -770,7 +770,7 @@ functions.write = function(screen, text, override, transparent)
                 stc(tPixel["foreground"]) 
                 scp(tPixel["xPos"], tPixel["yPos"])
                 spit(tPixel["text"])
-            else
+            elseif screen.isVisible then
                 scp(tPixel["xPos"], tPixel["yPos"])
                 spit(letter)   
             end
@@ -1426,6 +1426,7 @@ functions.redirect = function(screen, target)
     end
 
     -- # Remove Inapplicable Pixels if Applicable:
+    -- $ Instead of Killing Pixels...Move to Buffer?
     if prevW - w > 0 then
         for y = 1, h do
             for x = w, prevW do
@@ -1458,7 +1459,7 @@ functions.redirect = function(screen, target)
                     screen.pixels[y][x] = {
                         ["xPos"] = x,
                         ["yPos"] = y,
-                        ["text"] = "",
+                        ["text"] = " ",
                         ["level"] = screen.level,
                         ["foreground"] = foreground,
                         ["background"] = background,
@@ -1467,7 +1468,7 @@ functions.redirect = function(screen, target)
                     screen.terminal[y][x] = {
                         ["xPos"] = x,
                         ["yPos"] = y,
-                        ["text"] = "",
+                        ["text"] = " ",
                         ["level"] = screen.level,
                         ["foreground"] = foreground,
                         ["background"] = background,
@@ -1497,7 +1498,7 @@ functions.redirect = function(screen, target)
                 screen.pixels[y][x] = {
                     ["xPos"] = curX,
                     ["yPos"] = curY,
-                    ["text"] = "",
+                    ["text"] = " ",
                     ["level"] = screen.level,
                     ["foreground"] = foreground,
                     ["background"] = background,
@@ -1516,7 +1517,7 @@ functions.redirect = function(screen, target)
                     screen.parent.displays[tostring(target)][y][x] = {
                         ["xPos"] = x,
                         ["yPos"] = y,
-                        ["text"] = "",
+                        ["text"] = " ",
                         ["level"] = screen.level,
                         ["foreground"] = foreground,
                         ["background"] = background,
@@ -2063,55 +2064,60 @@ functions.refresh = function(screen, all)
     if type(screen) ~= "table" or not screen.isScreen then error("['screen'] was not defined!", 2) end
 
     -- # Declaring Local Variables:
-    local hook = screen:hook()
+    local hook = nil
+    if screen.isParent then
+        hook = screen:hook()
+    else
+        hook = screen.parent:hook()
+    end
     local spit = hook.write
 
     -- # Code:
     -- # Draw Pixels:
-    if not all then
+    if not all and not screen.transparent then
         for y = 1, screen.height do
             for x = 1, screen.width do
-                spit(screen.pixels[y][x])
+                spit(screen.pixels[y][x], false, false)
             end
         end
     else
         if screen.isParent then
+            -- # Update Parent Screen:
+            for y = 1, screen.height do
+                for x = 1, screen.width do
+                    spit(screen.pixels[y][x], false, false)
+                end
+            end
+
             -- # Refresh Screens:
             if #screen.children > 0 then
                 for i = 1, #screen.children do
-                    if screen.children[i].isVisible then
+                    if screen.children[i].isVisible and not screen.children[i].transparent then
                         for y = 1, screen.children[i].height do
                             for x = 1, screen.children[i].width do
-                                spit(screen.children[i].pixels[y][x])
+                                spit(screen.children[i].pixels[y][x], false, false)
                             end
                         end
-                    end
-                end
-            end
-            if screen.isVisible then
-                for y = 1, screen.height do
-                    for x = 1, screen.width do
-                        spit(screen.pixels[y][x])
                     end
                 end
             end
         else
+            -- # Update Parent Screen:
+            for y = 1, screen.parent.height do
+                for x = 1, screen.parent.width do
+                    spit(screen.parent.pixels[y][x], false, false)
+                end
+            end
+
             -- # Update Screens:
             if #screen.parent.children > 0 then
                 for i = 1, #screen.parent.children do
-                    if screen.parent.children[i].isVisible then
+                    if screen.parent.children[i].isVisible and not screen.parent.children[i].transparent then
                         for y = 1, screen.parent.children[i].height do
                             for x = 1, screen.parent.children[i].width do
-                                spit(screen.parent.children[i].pixels[y][x])
+                                spit(screen.parent.children[i].pixels[y][x], false, false)
                             end
                         end
-                    end
-                end
-            end
-            if screen.parent.isVisible then
-                for y = 1, screen.parent.height do
-                    for x = 1, screen.parent.width do
-                        spit(screen.parent.pixels[y][x])
                     end
                 end
             end
@@ -2149,7 +2155,6 @@ functions.visible = function(screen, visible)
 
     -- # Declaring Local Variables:
     local hook = screen:hook()
-    local terminal = nil
 
     -- # Checking Declared Variables:
     if type(visible) ~= "boolean" then
@@ -2158,7 +2163,7 @@ functions.visible = function(screen, visible)
 
     -- # Code:
     if screen.isParent then
-        return false
+        error("Cannot change visibility of parent!", 2)
     end
 
     if visible == true then
@@ -2204,8 +2209,8 @@ functions.visible = function(screen, visible)
                 end
             end
         end
-
-        -- # Update Terminal:
+        
+        -- # Update Terminal if New Visibility Rules:
         for y = screen.startY, screen.endY do
             for x = screen.startX, screen.endX do
                 screen.parent.terminal[y][x]["level"] = screen.level
@@ -2611,7 +2616,7 @@ function new(terminal)
             Parent.terminal[y][x] = {
                 ["xPos"] = x,
                 ["yPos"] = y,
-                ["text"] = "",
+                ["text"] = " ",
                 ["level"] = Parent.level,
                 ["foreground"] = foreground,
                 ["background"] = background,
